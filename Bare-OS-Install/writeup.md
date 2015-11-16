@@ -103,6 +103,15 @@ none on /dev/shm type tmpfs (rw)
 none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
 /dev/xvdb1 on /data type ext4 (rw)
 /dev/xvdc1 on /commitlog type ext4 (rw)
+
+[root@ip-172-31-39-112 ~]# cat /etc/fstab
+LABEL=ROOT /         ext3    defaults        0 0
+none       /dev/pts  devpts  gid=5,mode=620  0 0
+none       /dev/shm  tmpfs   defaults        0 0
+none       /proc     proc    defaults        0 0
+none       /sys      sysfs   defaults        0 0
+/dev/xvdb	/data	ext4	defaults 0 0
+/dev/xvdc	/commitlog	ext4	defaults 0 0
 ```
 
 4. **Check Secondary Node Connectivity**
