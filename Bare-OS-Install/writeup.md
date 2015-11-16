@@ -130,20 +130,24 @@ root
 ```
 
   Add DataStax Repo:
-  `vim /etc/ym.repos.d/datastax/repo`
+  
   ```
+  vim /etc/ym.repos.d/datastax/repo
+  
   baseurl=http://username:password@rpm.datastax.com/enterprise (urlencode @ sign in username)
   enabled=1
   gpgcheck=0
   ```
   
   Install DSE:
-  
-  `yum install dse-full`
+  ```
+  yum install dse-full
+  ```
 
 6. **Configure Cassandra**
-  
-  `vim /etc/dse/cassandra/cassandra.yaml`
+  ```
+  vim /etc/dse/cassandra/cassandra.yaml
+  ```
 
   Set cluster name: 
   ```
