@@ -130,7 +130,27 @@ PING 172.31.46.20 (172.31.46.20) 56(84) bytes of data.
 rtt min/avg/max/mdev = 0.486/0.983/2.767/0.893 ms
 ```
 
-5. **Install DSE**
+5. **Prepare Software Environment**
+  
+  Check OS: 
+
+  ```
+[root@ip-172-31-39-112 ~]# uname -a
+Linux ip-172-31-39-112 2.6.32-504.12.2.el6.centos.plus.x86_64 #1 SMP Thu Mar 12 18:39:03 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
+```
+  OS is not RHEL5 nor 64-bit Oracle Linux, so no EPEL or 32-bit glibc required.
+  
+  Update existing packages:
+  
+  ```
+  [root@ip-172-31-39-112 ~]# yum update
+Loaded plugins: security, versionlock
+Setting up Update Process
+rightscale-epel                                                                                     | 2.9 kB     00:00
+No Packages marked for Update
+```
+
+6. **Install DSE**
 
   Confirm root:
   ```
@@ -153,7 +173,7 @@ root
   yum install dse-full
   ```
 
-6. **Configure Cassandra**
+7. **Configure Cassandra**
   ```
   vim /etc/dse/cassandra/cassandra.yaml
   ```
@@ -193,13 +213,13 @@ root
       - /var/lib/cassandra/data
   ```
 
-7. **Start DSE**
+8. **Start DSE**
   
   ```
   [root@ip-172-31-39-112 cassandra]# service dse start
   ```
   
-8. **Confirm cluster is in working order**
+9. **Confirm cluster is in working order**
   
   ```
   [root@ip-172-31-39-112 cassandra]# nodetool status
