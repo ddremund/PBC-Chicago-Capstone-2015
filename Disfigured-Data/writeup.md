@@ -66,7 +66,7 @@ CREATE TABLE stupormail.email (
 
 ### 2. Existing Queries :
 
-0: Get mailboxes for a given user:
+0. Get mailboxes for a given user:  
   `select mailbox from email where user = ? limit 1000` 
 
 1. Get count of unread:  
@@ -196,11 +196,20 @@ summary:                                 +  34598 in  31.4s = 1100.2/s Avg:    3
 summary:                                 = 173684 in   156s = 1116.5/s Avg:    28 Min:     0 Max:  3254 Err:  1009 (0.58%)
 ```
 
-### 3. Suggested New Data Model:
+### 3. Suggested New Data Model and Queries:
 
-We've made some assumptions:
+Query-driven analysis was performed to suggest the following new data model and updated queries.  The model was changed from two tables to four, and some standard rules were followed where applicable and workable:
+1. Entity and relationship types map to tables
+2. Key attributes map to primary key columns
+3. Equality search attributes map to partition keys
+4. Inequality search attributes map to clustering columns
+5. Ordering attributes map to clustering columns
 
-1. Based on comments in the JMeter configuration and discussion with the instructor, we are assuming that for the purpose of attachments that `(user, mailbox, msgdate)
+Attempts were made to stick to one-to-one request-to-partition ratios where possible.
+
+Tradeoffs were made for performance, complexity, and space utilization.  For example, a separate message bodies table with partition key containing `message_id` would have potentially been more performant for the query retrieving complete messages, rather than reusing `messages_by_user_mailbox`.  However, this would have required additional maintenance of referential integrity at the application layer, as well as potentially-signficant ballooning of storage utilization in production.  Thus for mangaement, application, and storage simplicity it was decided that messages would remain partitioned by `(user, mailbox)` for retrival.  
+
+#### New Model
 
 ```
 CREATE KEYSPACE stupormail2 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}  AND durable_writes = true;
@@ -256,7 +265,7 @@ CREATE TABLE stupormail2.is_read_by_user_mailbox (
     user text,
     mailbox text,
     is_read boolean,
-    msgdate text,
+    msgdate timestamp,
     message_id text,
     PRIMARY KEY ((user, mailbox), is_read, msgdate, message_id)
 ) WITH CLUSTERING ORDER BY (is_read ASC, msgdate DESC, message_id DESC)
@@ -292,4 +301,84 @@ CREATE TABLE stupormail2.mailboxes_by_user (
     AND min_index_interval = 128
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
+```
+#### New queries
+
+0. Get mailboxes for a given user:
+  `select mailbox from mailboxes_by_user where user = ? limit 1000;`
+
+1. Get count of unread:  
+  `select count(*) from is_read_by_user_mailbox where user = ? and mailbox = ? and is_read = true`
+
+2. Get 20 most recent in a given mailbox:  
+  `select msgdate, fromlist, message_id, subject from messages_by_user_mailbox where user = ? and mailbox = ?  limit 20`
+
+3. Determine if msg has attachments:  
+  `select filename from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? limit 1`
+
+4. List next 20 in given mailbox:   
+  `select msgdate, fromlist, message_id, subject from messages_by_user_mailbox where user = ? and mailbox = ? and (msgdate, message_id) > (?,?) limit 20`
+
+5. Read one message with body:  
+  `select msgdate, fromlist, message_id, subject, body from messages_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ?`
+
+6. Mark message as read:
+  ```
+  begin batch
+	delete from is_read_by_user_mailbox where user = ? and mailbox = ? and is_read = false and msgdate = ? and message_id = ?
+	insert into is_read_by_user_mailbox (user, mailbox, is_read, msgdate, message_id) values (?, ?, true, ?, ?)
+  apply batch
+  ```
+
+7. List the atts for a given message:  
+  `select filename from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ?`
+
+8. Open the given attachment:  
+  `select content_type from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ? and filename = ?`
+
+9. Delete the given message:
+  ```
+  begin unlogged batch
+   delete from is_read_by_user_mailbox where is_read = true and user = ? and mailbox = ? and msgdate = ? and message_id = ?
+   delete from is_read_by_user_mailbox where is_read = false and user = ? and mailbox = ? and msgdate = ? and message_id = ?
+   delete from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ?
+   delete from messages_by_user_mailbox where user = ? and mailbox = ? and msgdate  = ? and message_id = ?
+  apply batch
+  ```
+10. Write Email:
+  ```
+  begin batch
+	insert into messages_by_user_mailbox (user, mailbox, msgdate, message_id, subject, body) values (?,?,dateof(now()),?,?,?)
+	insert into is_read_by_user_mailbox (user,mailbox,is_read,msgdate,message_id) values (?,?,false,dateof(now()),?)
+  apply batch
+  ```
+  
+  ### 3.  JMeter Performance With New Model
+  
+  ```
+  0: Get mailboxes for a given user            3306 in    30s =  110.3/s Avg:     3 Min:     0 Max:    33 Err:     0 (0.00%)
+1: Get count of unread                       3306 in    30s =  110.3/s Avg:     2 Min:     0 Max:    36 Err:    29 (0.88%)
+2: Get 20 most recent in given mailbox       3306 in    30s =  110.3/s Avg:     3 Min:     0 Max:    85 Err:    29 (0.88%)
+3: Determine if msg has attachments         47566 in    30s = 1585.1/s Avg:     2 Min:     0 Max:    83 Err:   156 (0.33%)
+4: List the next 20 in the given mailbox     1581 in    30s =   52.8/s Avg:     3 Min:     0 Max:    81 Err:     0 (0.00%)
+5: Read one message with body                6931 in    30s =  231.3/s Avg:     3 Min:     0 Max:    80 Err:    24 (0.35%)
+6: Mark message as read                      6931 in    30s =  231.3/s Avg:     2 Min:     0 Max:    33 Err:    24 (0.35%)
+7: List the atts for the given message       6931 in    30s =  231.3/s Avg:     2 Min:     0 Max:    81 Err:    24 (0.35%)
+8: Write email                               5022 in    30s =  167.5/s Avg:     3 Min:     0 Max:    79 Err:     3 (0.06%)
+9: Delete the given message                   344 in    30s =   11.5/s Avg:     2 Min:     0 Max:    15 Err:     3 (0.87%)
+summary:                                 +  85224 in    30s = 2840.0/s Avg:     2 Min:     0 Max:    85 Err:   292 (0.34%) Active: 41 Started: 41 Finished: 0
+summary:                                 = 166541 in    66s = 2541.9/s Avg:     2 Min:     0 Max:   150 Err:   506 (0.30%)
+
+0: Get mailboxes for a given user            3252 in    30s =  108.5/s Avg:     3 Min:     0 Max:    96 Err:     0 (0.00%)
+1: Get count of unread                       3252 in    30s =  108.5/s Avg:     2 Min:     0 Max:    27 Err:    27 (0.83%)
+2: Get 20 most recent in given mailbox       3252 in    30s =  108.5/s Avg:     3 Min:     0 Max:    92 Err:    27 (0.83%)
+3: Determine if msg has attachments         46705 in    30s = 1556.4/s Avg:     2 Min:     0 Max:    92 Err:   134 (0.29%)
+4: List the next 20 in the given mailbox     1567 in    30s =   52.3/s Avg:     3 Min:     0 Max:    87 Err:     8 (0.51%)
+5: Read one message with body                6761 in    30s =  225.5/s Avg:     3 Min:     0 Max:    96 Err:    18 (0.27%)
+6: Mark message as read                      6761 in    30s =  225.5/s Avg:     2 Min:     0 Max:    95 Err:    18 (0.27%)
+7: List the atts for the given message       6761 in    30s =  225.5/s Avg:     2 Min:     0 Max:    88 Err:    18 (0.27%)
+8: Write email                               4972 in    30s =  165.8/s Avg:     3 Min:     0 Max:   231 Err:     3 (0.06%)
+9: Delete the given message                   341 in    30s =   11.5/s Avg:     2 Min:     0 Max:    15 Err:     1 (0.29%)
+summary:                                 +  83624 in    30s = 2786.6/s Avg:     2 Min:     0 Max:   231 Err:   254 (0.30%) Active: 41 Started: 41 Finished: 0
+summary:                                 = 250165 in    96s = 2619.0/s Avg:     2 Min:     0 Max:   231 Err:   760 (0.30%)
 ```
