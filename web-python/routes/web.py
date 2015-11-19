@@ -138,25 +138,25 @@ def search_receipts():
     search_term = request.args.get('s')
 
     if not search_term:
-        return render_template('search_list.jinja2',
+        return render_template('search_receipts.jinja2',
                                products = None)
 
     filter_by = request.args.get('filter_by')
 
     # parameters to solr are rows=300  wt (writer type)=json, and q=city:<keyword> sort=zipcode asc
     # note: escape quote any quotes that are part of the query / filter query
-    solr_query = '"q":"title:%s"' % search_term.replace('"','\\"').encode('utf-8')
+    solr_query = '"q":"product_name:%s"' % search_term.replace('"','\\"').encode('utf-8')
 
     if filter_by:
         solr_query += ',"fq":"%s"' % filter_by.replace('"','\\"').encode('utf-8')
 
-    query = "SELECT * FROM products_by_id WHERE solr_query = '{%s}' LIMIT 300" % solr_query
+    query = "SELECT * FROM receipts WHERE solr_query = '{%s}' LIMIT 300" % solr_query
 
     # get the response
     results = cassandra_helper.session.execute(query)
 
-    facet_query = 'SELECT * FROM products_by_id WHERE solr_query = ' \
-                  '\'{%s,"facet":{"field":["supplier_name","category_name"]}}\' ' % solr_query
+    facet_query = 'SELECT * FROM receipts WHERE solr_query = ' \
+                  '\'{%s,"facet":{"field":["supplier_name","quantity"]}}\' ' % solr_query
 
     facet_results = cassandra_helper.session.execute(facet_query)
     facet_string = facet_results[0].get("facet_fields")
@@ -164,11 +164,11 @@ def search_receipts():
     # convert the facet string to an ordered dict because solr sorts them desceding by count, and we like it!
     facet_map = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(facet_string)
 
-    return render_template('search_list.jinja2',
+    return render_template('search_receipts.jinja2',
                            search_term = search_term,
-                           categories = filter_facets(facet_map['category_name']),
+                           quantities = filter_facets(facet_map['quantity']),
                            suppliers = filter_facets(facet_map['supplier_name']),
-                           products = results,
+                           receipts = results,
                            filter_by = filter_by)
 
 #

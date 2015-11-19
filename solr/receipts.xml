@@ -30,8 +30,6 @@
      <field name="scan_id"  type="timeuuid" indexed="true"  stored="true"/>
     <field name="product_name"  type="text" indexed="true"  stored="true"/>
     <field name="product_id"  type="string" indexed="true"  stored="true"/>
-    <field name="supplier_name"  type="string" indexed="true"  stored="true"/>
-    
     <field name="unit_price"  type="decimal" indexed="true"  stored="true"/>
     <field name="quantity" type="int" indexed="true" stored="true"/>
  </fields>
