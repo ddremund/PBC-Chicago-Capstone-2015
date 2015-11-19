@@ -246,7 +246,7 @@ CREATE TABLE stupormail2.attachments_by_user_mailbox (
     AND min_index_interval = 128
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
-    ```
+ ```
     
 ##### `mailboxes_by_user`
 This table is used to satisfy the "Get mailboxes by user" query.  Therefore we partion on `user` and cluster by `mailbox` to make it easy to retrieve a sorted list of mailboxes for a particular user.  For the purpose of this test this table is also written to by "Write email" query, although some logic at the application layer would obviously be used typically to create a new mailbox.
