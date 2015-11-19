@@ -209,11 +209,21 @@ Attempts were made to stick to one-to-one request-to-partition ratios where poss
 
 Tradeoffs were made for performance, complexity, and space utilization.  For example, a separate message bodies table with partition key containing `message_id` would have potentially been more performant for the query retrieving complete messages, rather than reusing `messages_by_user_mailbox`.  However, this would have required additional maintenance of referential integrity at the application layer, as well as potentially-signficant ballooning of storage utilization in production.  Thus for mangaement, application, and storage simplicity it was decided that messages would remain partitioned by `(user, mailbox)` for retrival.  
 
-#### New Model
+#### New Tables:
+
+##### `attachments_by_user_mailbox`
+This table is used for the following `select` queries:
+- Determine if msg has attachments
+- List the attachements for a given message
+- Open the given attachment
+
+The `user` and `mailbox` fields are used as partition keys to locate data in a more optimal fashion. `msgdate` and `message_id` are used as clustering columns for uniqueness.  Finally, the `filename` attribute is used as a clustering column to define attachments, thereby differentiating this from other message tables.  
+
+In production we might create another table to actually store the bytes of the attachments, using `filename` as part of the partition key.  This would make sense if the workload commonly had single files being pulled out of the database.  However, if the application pulled all of the files for a message prior to them being individually opened by the client then the existing table would suffice.  Either way, the point is moot for this exercise as the brief was to not handle the actual bytes as part of the test workload.
+
+The table is also written to by the "Delete the given message" query.  The workload's "Write message" query does not write emails with attachments.
 
 ```
-CREATE KEYSPACE stupormail2 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}  AND durable_writes = true;
-
 CREATE TABLE stupormail2.attachments_by_user_mailbox (
     user text,
     mailbox text,
@@ -236,7 +246,42 @@ CREATE TABLE stupormail2.attachments_by_user_mailbox (
     AND min_index_interval = 128
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
+    ```
+    
+##### `mailboxes_by_user`
+This table is used to satisfy the "Get mailboxes by user" query.  Therefore we partion on `user` and cluster by `mailbox` to make it easy to retrieve a sorted list of mailboxes for a particular user.  For the purpose of this test this table is also written to by "Write email" query, although some logic at the application layer would obviously be used typically to create a new mailbox.
 
+```
+CREATE TABLE stupormail2.mailboxes_by_user (
+    user text,
+    mailbox text,
+    PRIMARY KEY (user, mailbox)
+) WITH CLUSTERING ORDER BY (mailbox ASC)
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+```
+
+##### `messages_by_user_mailbox`
+This table is used for the following `select` queries:
+- Get 20 most recent in a given mailbox
+- List next 20 in a given mailbox
+- Read one messge with body
+
+The `user` and `mailbox` columns are used for partioning.  Equality matches are also done on `msgdate` and `message_id`, but we chose to keep them as clustering columns to allow this table to be used flexibly for multiple queries.  As noted previously we considered using separate tables for message summaries and actual message bodies, but chose to stick with a single table for this workload.  Thus several additional non-key attributes are provided in this table.
+
+The table is also written to by the "Delete the given message" and "Write email" queries.
+```
 CREATE TABLE stupormail2.messages_by_user_mailbox (
     user text,
     mailbox text,
@@ -260,7 +305,16 @@ CREATE TABLE stupormail2.messages_by_user_mailbox (
     AND min_index_interval = 128
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
+    ```
+##### `is_read_by_user_mailbox`
+This table is used to satisfy the following `select` queries:
+-  Get count of unread
+-  Mark message as read
 
+Both queries retrieve data based on `user` and `mailbox`, so they make up the partition key.  The `is_read` field is used as the first clustering column to facilitate quick retrieval of a list of unread messages.  The `msgdate` and `message_id` columns help ensure uniqueness.  We also considered using a counter column in the `mailboxes_by_user` table to store the unread message value, but not knowing the constraints around absolute accuracy of unread count we decided to stick with aggregation to count unread messages, either using `count` queries or at the application layer.
+
+The table is also written to via the "Delete the given message" and "Write email" queries.
+```
 CREATE TABLE stupormail2.is_read_by_user_mailbox (
     user text,
     mailbox text,
@@ -282,39 +336,25 @@ CREATE TABLE stupormail2.is_read_by_user_mailbox (
     AND min_index_interval = 128
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
+    ```
 
-CREATE TABLE stupormail2.mailboxes_by_user (
-    user text,
-    mailbox text,
-    PRIMARY KEY (user, mailbox)
-) WITH CLUSTERING ORDER BY (mailbox ASC)
-    AND bloom_filter_fp_chance = 0.01
-    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
-    AND comment = ''
-    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
-    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
-    AND dclocal_read_repair_chance = 0.1
-    AND default_time_to_live = 0
-    AND gc_grace_seconds = 864000
-    AND max_index_interval = 2048
-    AND memtable_flush_period_in_ms = 0
-    AND min_index_interval = 128
-    AND read_repair_chance = 0.0
-    AND speculative_retry = '99.0PERCENTILE';
-```
 #### New queries
 
 0. Get mailboxes for a given user:
-  `select mailbox from mailboxes_by_user where user = ? limit 1000;`
+  `select mailbox from mailboxes_by_user where user = ? limit 1000;`  
+This query now has a table designed specifically for it.
 
 1. Get count of unread:  
-  `select count(*) from is_read_by_user_mailbox where user = ? and mailbox = ? and is_read = true`
+  `select count(*) from is_read_by_user_mailbox where user = ? and mailbox = ? and is_read = true`  
+We've decided to perform the counting of unread items directly in the workload this time.  This is in contrast to the original workload which simply retrieved the rows (and also didn't appear to actually solve for getting the correct unread count).
 
 2. Get 20 most recent in a given mailbox:  
-  `select msgdate, fromlist, message_id, subject from messages_by_user_mailbox where user = ? and mailbox = ?  limit 20`
+  `select msgdate, fromlist, message_id, subject from messages_by_user_mailbox where user = ? and mailbox = ?  limit 20`  
+This query reads messages_by_user_mailbox and matches based on user and mailbox.  It pulls the attributes as required by the original query.
 
 3. Determine if msg has attachments:  
-  `select filename from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? limit 1`
+  `select filename from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? limit 1`  
+This query is based off assumptions made by the original data model and JMeter test plan.  It matches based on user and mailbox as per other queries, however, it only matches based on msgdate and not message_id as would be required in “real life”.  In this scenario, it means that people can only receive one email with attachments in a single point in time.
 
 4. List next 20 in given mailbox:   
   `select msgdate, fromlist, message_id, subject from messages_by_user_mailbox where user = ? and mailbox = ? and (msgdate, message_id) > (?,?) limit 20`
@@ -329,29 +369,36 @@ CREATE TABLE stupormail2.mailboxes_by_user (
 	insert into is_read_by_user_mailbox (user, mailbox, is_read, msgdate, message_id) values (?, ?, true, ?, ?)
   apply batch
   ```
+  In this query we remove an email and readd that email back into the table with the is_read attribute set to true.  This is done in this fashion as the is_read attribute is part of the primary key.
 
 7. List the atts for a given message:  
-  `select filename from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ?`
+  `select filename from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ?`  
+A new table has been created for attachments.  Emails will have attachments if a filename for that email exists.  This is an assumption, but an assumption made by the original data model and test plan.
 
 8. Open the given attachment:  
-  `select content_type from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ? and filename = ?`
+  `select content_type from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ? and filename = ?`  
+We use a batch statement to ensure referential integrity of the data model when data is inserted into the model.  An important assumption we make is that the dateof(now()) function gives the same time for both queries in the batch statement for insertion of data into the appropriate tables.  
 
 9. Delete the given message:
   ```
   begin unlogged batch
-   delete from is_read_by_user_mailbox where is_read = true and user = ? and mailbox = ? and msgdate = ? and message_id = ?
-   delete from is_read_by_user_mailbox where is_read = false and user = ? and mailbox = ? and msgdate = ? and message_id = ?
-   delete from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ?
-   delete from messages_by_user_mailbox where user = ? and mailbox = ? and msgdate  = ? and message_id = ?
+	delete from is_read_by_user_mailbox where is_read = true and user = ? and mailbox = ? and msgdate = ? and message_id = ?
+	delete from is_read_by_user_mailbox where is_read = false and user = ? and mailbox = ? and msgdate = ? and message_id = ?
+	delete from attachments_by_user_mailbox where user = ? and mailbox = ? and msgdate = ? and message_id = ?
+	delete from messages_by_user_mailbox where user = ? and mailbox = ? and msgdate  = ? and message_id = ?
   apply batch
   ```
+  In order to attain referential integrity within the data model, we run a batch query to ensure a deletion of an email is reflected across the entire data model.
+  
 10. Write Email:
   ```
   begin batch
 	insert into messages_by_user_mailbox (user, mailbox, msgdate, message_id, subject, body) values (?,?,dateof(now()),?,?,?)
 	insert into is_read_by_user_mailbox (user,mailbox,is_read,msgdate,message_id) values (?,?,false,dateof(now()),?)
+	insert into mailboxes_by_user (user, mailbox) values (?,?)
   apply batch
   ```
+    In order to attain referential integrity within the data model, we run a batch query to ensure a insertion of an email is reflected across the entire data model.  Note that we allow new mailboxes to be created through mail insertion, but this may not be correct for the application in the "real world".
   
   ### 3.  JMeter Performance With New Model
   
