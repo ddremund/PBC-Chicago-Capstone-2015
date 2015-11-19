@@ -305,7 +305,7 @@ CREATE TABLE stupormail2.messages_by_user_mailbox (
     AND min_index_interval = 128
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
-    ```
+```
 ##### `is_read_by_user_mailbox`
 This table is used to satisfy the following `select` queries:
 -  Get count of unread
