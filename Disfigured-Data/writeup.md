@@ -2,7 +2,7 @@
 ​
 Group: Derek Remund, Gene Tang
 ​
-### 1. Existing Data Model:
+### 1. Existing Data Model
 
 Data model has two tables, one for attachments and one for message info:
 
@@ -64,7 +64,7 @@ CREATE TABLE stupormail.email (
     AND speculative_retry = '99.0PERCENTILE';
 ```
 
-### 2. Existing Queries :
+### 2. Existing Queries
 
 0. Get mailboxes for a given user:  
   `select mailbox from email where user = ? limit 1000` 
@@ -109,7 +109,7 @@ CREATE TABLE stupormail.email (
   insert into email (user,mailbox,msgdate,message_id,subject,body) values (?,?,dateof(now()),?,?,?)
   ```
   
-### 3. Initial JMeter Performance:
+### 3. Initial JMeter Performance
   
 ```
 root@node0:~/disfigured# jmeter -n -t disfigured.jmx
@@ -196,7 +196,7 @@ summary:                                 +  34598 in  31.4s = 1100.2/s Avg:    3
 summary:                                 = 173684 in   156s = 1116.5/s Avg:    28 Min:     0 Max:  3254 Err:  1009 (0.58%)
 ```
 
-### 3. Suggested New Data Model and Queries:
+### 4. Suggested New Data Model and Queries
 
 Query-driven analysis was performed to suggest the following new data model and updated queries.  The model was changed from two tables to four, and some standard rules were followed where applicable and workable:
 1. Entity and relationship types map to tables
@@ -400,7 +400,8 @@ We use a batch statement to ensure referential integrity of the data model when 
   ```
     In order to attain referential integrity within the data model, we run a batch query to ensure a insertion of an email is reflected across the entire data model.  Note that we allow new mailboxes to be created through mail insertion, but this may not be correct for the application in the "real world".
   
-  ### 3.  JMeter Performance With New Model
+### 5.  JMeter Performance With New Model
+We've achieved an approximate 2.5x speedup over the original model, even though we are now also performing additional work such as performing the count aggregation of unread messages.
   
   ```
   0: Get mailboxes for a given user            3306 in    30s =  110.3/s Avg:     3 Min:     0 Max:    33 Err:     0 (0.00%)
@@ -428,4 +429,62 @@ summary:                                 = 166541 in    66s = 2541.9/s Avg:     
 9: Delete the given message                   341 in    30s =   11.5/s Avg:     2 Min:     0 Max:    15 Err:     1 (0.29%)
 summary:                                 +  83624 in    30s = 2786.6/s Avg:     2 Min:     0 Max:   231 Err:   254 (0.30%) Active: 41 Started: 41 Finished: 0
 summary:                                 = 250165 in    96s = 2619.0/s Avg:     2 Min:     0 Max:   231 Err:   760 (0.30%)
+```
+
+### 6. Spark ETL
+
+These commands were run via a Jupyter notebook to move data from the old schema to the new schema.
+
+##### Common Code
+
+This code creates case classes for use by our RDDs:
+```
+case class Email (user: String,
+mailbox:String, bcclist: Set[String],
+message_id:String, msgdate: Date,
+body:String,
+cclist: Set[String],
+fromlist: Set[String],
+subject: String,
+tolist: Set[String],
+is_read: Option [Boolean])
+
+case class Attachment_summary (user:String,
+mailbox:String, msgdate:Date, message_id:String,
+filename: String, content_type: String)
+```
+
+This scala code imports data from existing databases into RDD’s:
+```
+var emails = sc.cassandraTable("stupormail","email").select("user","mailbox","bcclist","message_id","msgdate","body","cclist","fromlist","subject","tolist","is_read").as(Email)
+
+var attachment_summaries = sc.cassandraTable("stupormail","attachments").select("user","mailbox","msgdate","message_id","filename","content_type").as(Attachment_summary)
+```
+
+##### `messages_by_user_mailbox`
+This query imports data into the messages_by_user_mailbox table.  This is a direct transfer of data with no manipulation of the data:
+```
+emails.saveToCassandra("stupormail2","messages_by_user_mailbox",SomeColumns("user","mailbox","msgdate", "message_id","body", "fromlist","subject"))
+```
+
+##### `is_read_by_user_mailbox`
+This query imports data into the is_read_by_user_mailbox table.  The additional code is required take ‘null’ values and convert them to Boolean values.  Null is replaced by ‘false’.  True values are retained.
+```
+val read = emails.filter(m => m.is_read == true)
+val unread = emails.filter(m => m.is_read != true)
+val unread2 = unread.map(m => Email(m.user, m.mailbox, m.bcclist, m.message_id, m.msgdate, m.body, m.cclist, m.fromlist, m.subject, m.tolist, Some(false)))
+val emails2 = read.union(unread2)
+emails2.saveToCassandra("stupormail2","is_read_by_user_mailbox",SomeColumns("user","mailbox","is_read", "msgdate","message_id"))
+```
+
+##### `mailboxes_by_user`
+This query imports data into the mailboxes_by_user table.  This is a direct transfer of data with no manipulation of the data:
+```
+emails.saveToCassandra("stupormail2","mailboxes_by_user",SomeColumns("user","mailbox"))
+```
+
+##### `attachments_by_user_mailbox`
+This query imports data into the attachments_by_user_mailbox table.  This is a direct transfer of data with no manipulation of the data:
+```
+attachment_summaries.saveToCassandra("stupormail2","attachments_by_user_mailbox",SomeColumns("user","mailbox","msgdate","message_id","filename","content_type"))
 ```
