@@ -199,6 +199,7 @@ summary:                                 = 173684 in   156s = 1116.5/s Avg:    2
 ### 4. Suggested New Data Model and Queries
 
 Query-driven analysis was performed to suggest the following new data model and updated queries.  The model was changed from two tables to four, and some standard rules were followed where applicable and workable:
+
 1. Entity and relationship types map to tables
 2. Key attributes map to primary key columns
 3. Equality search attributes map to partition keys
