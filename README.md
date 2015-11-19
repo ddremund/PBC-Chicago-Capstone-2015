@@ -1,124 +1,132 @@
-The Black Friday project contains 4 major parts.
+# Partner Bootcamp Contribution Instructions
 
-The first is in the cql directory that sets up the database schema for the entire project.
+## Overview
 
-The second part is a sample Spark job
+**Welcome to DataStax Partner Bootcamp!**
 
-The third  part is a sample Solr schema with a script to post it
+*This README file contains the instructions of what you will need to supply for
+evaluation.* For each of the labs, use strategic and functional
+ comments and supply summary documentation comments in your code so
+ that we may appropriately assess your efforts.
+ 
+ **Please read each portion carefully.**
 
-The fourth part is the web project in the web directory that is a simple Python / Flask project that runs against a local DSE. This expects that you have a local DSE setup and running.
+## Documentation Requirements
 
-The fifth is a cash-register simulator implemented with JMeter
+1. All documents should be written as .txt, .md or html only.
+2. Include both strategic and functional documentation of your code for review.
+3. Include a summary of what either you personally performed or what did with
+   your team. Therefore, you should be taking notes during the entire duration
+   of the labs.
 
-## Mac Setup ##
+### GitHub Workflow
 
-1 - Install [brew](http://brew.sh/)   - The default mac python won't work
+**Steps:**
 
-2 - install wget:
-```
-  brew install wget
-```
+1. Fork the PBC repository on GitHub under your GitHub handle. *Note:* Every person will have
+their own fork. When you work in pairs, you simply submit the same `writeup.txt`
+file with your forked copy. The only time this will be different is for Bare OS
+Install when you will submit 1 document on your own and 1 with your group.
+2. The repository will remain Private, when you fork it will still remain private.
+You will have write access, meaning you can push and pull, but please only push
+to YOUR fork.
 
-2 - install brew's version of python:
-```
-  brew install python
-```
+### Schedule
 
-3 - verify you can run python:  
-
-```
-      python
-      exit()
-```
-
-2 - install pip:
-```
-  brew install pip
-```
-
-## All platforms - for manual setup ##
-
-4 Install Python dependencies:
+### Directory Structure
 
 ```
-pip install flask
-pip install blist
-pip install cassandra-driver
-pip install requests
+.
+├── Bare-OS-Install
+│       └── writeup.txt
+├── Capstone
+│       └── writeup.txt
+├── Cluster-Confusion
+│       └── writeup.txt
+├── Disfigured-Data
+│       ├── JMX
+│       ├── schema.txt
+│       └── writeup.txt
+└── README.md
 ```
 
-7 - Download and unzip [google visualization](https://google-visualization-python.googlecode.com/files/gviz_api_py-1.8.2.tar.gz)
+### Cluster Confusion
 
-8 - cd into the google visualization directory and run:
-```
-Installing the library:
-  python ./setup.py install
-  (You might need root privileges to do this)
+Submit one `writeup.txt` document per group including your documentation
+and summary. Make sure to add your cluster number in your writeup as well.
 
-Testing the library:
-  python ./setup.py test
-```
+| Group Number| Workstation | OpsCenter |
+| ---------- |:-------------:| :----------: |
+| Group 1: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 2: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 3: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 4: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 5:Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 6: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 8: Demo Cluster |   User Workstation: xx.xx.xx.xxx  |  http://xx.xx.xx.xxx:8888
 
-## Start here with the VM ##
+### Bare OS Install
 
-11 - Import the seed data:
-```
-  cd cql
-  cqlsh -f retail.cql
-  cqlsh -f import.cql
-```
+| Group Number| Workstation | OpsCenter |
+| ---------- |:-------------:| :----------: |
+| Group 1: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 2: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 3: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 4: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 5:Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 6: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 8: Demo Cluster |   User Workstation: xx.xx.xx.xxx  |  http://xx.xx.xx.xxx:8888
 
-10 - Import the sample solr index
-```
-   cd solr
-   ./add-schema.sh products_by_id
-```
-   
-9 - Run the primary project which starts up the Flask Web Project:
-```
-  cd web
-  ./run &
-```
-11 - Verify that the project is running locally by going to [http://localhost:5001/](http://localhost:5001/)
+Submit one `writeup.txt` document per person and one document per group.
+There should be four documents at the end.
 
-Try out the solr search and the product lookup. Some of the other pages are blank, as
-they are populated in the following steps. You may need to peek in the database to find 
-valid product ids.
+### Disfigured Data
 
-10 - Simulate the cash registers
-```
-   cd jmeter
-   jmeter -n -t scan.jmx
-```
-You can also start jmeter without the -n option to run it in the foreground
-This will insert a significant amount of data, so run it sparingly.
+| Group Number| Workstation | OpsCenter |
+| ---------- |:-------------:| :----------: |
+| Group 1: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 2: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 3: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 4: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 5:Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 6: Name - [GitHub Username](Link to forked repo), Name - [GitHub Username](Link to forked repo) | xx.xx.xxx.xxx |  http://xx.xx.xx.xx:8888
+| Group 8: Demo Cluster |   User Workstation: xx.xx.xx.xxx  |  http://xx.xx.xx.xxx:8888
 
-12 - Rollup the data by submitting the 
-```
+Submit your jMeter output in `JMX`, DESC KEYSPACES output in `schema`, and a
+summary in `writeup.txt`.
 
-11 - Setup DSE / Cassandra.  Under the cql directory is the schema for the database.  It's assumed that cqlsh is in your path.  Import it using:
-```
-  cd cql
-  cqlsh -f retail.cql
-```
+### Capstone (Final Project)
+
+Submit your documentation in `writeup.txt`. Your code should be submitted **to
+your group's** repository, forked from [this repo](https://github.com/DataStax-Enablement/PBC-Paris-Capstone-2015). Indicate who was in your group in the readme file of your forked repo. 
+
+You may also submit your presentation in the `PBC-Paris-Capstone-2015` repository as well if it is a code-based presentation framework. Otherwise, place it in google drive, in the presentations folder by Saturday.
+
+**Capstone Presentation guidelines:**
+
+Consider that you are presenting to a customer with a retail use case for Black Friday. They need a solution which will be able to hand the impact of heavy traffic for Black Friday. By generating a demo/POC, you have given them the supplemental technical proof of concept, but you will also need to supply the messaging and framing around the implementation. 
+
+Please create a presentation that is no more than 20 minutes in length to describe the most salient points of what you implemented leveraging the DSE stack: Cassandra, Solr and Spark. Present this as you would to a customer. 
+
+*Presentation Time*: 1pm on Nov. 6th. 
+
+*Presentation Length*: 20 minutes/group.
+
+**Topics to cover**: 
+* Overall POC: what did the customer have before you did this work and after?
+* Describing what you did: do not do a code review -- explain at a high level what you did and why.
+* Visualizing what you added: This is up to you, others have done chord charts in D3, do what you like.
+* Next steps/Q&A.
+* Code is due by Midnight on Nov. 7th.
 
 
-### Project Overview ###
-
-The directory web/routes has the basic files for the web project.  It uses the familiar paradigm of Ruby on Rails or Play Framework of having a routes file the defines what happens when the user navigates to different URL's.
-
-route.py - This defines the basic index for the root URL of the project.  It simply generates the html in that method.
-```
-  @web_api.route('/')
-```
-
-rest.py - This defines the rest endpoints for the project.  As one example navigate to [http://localhost:5000/api/paging/system/compaction_history/](http://localhost:5000/api/paging/system/compaction_history/).  This calls the following route in rest.py:
-```
-  @rest_api.route('/paging/<keyspace>/<table>/')
-```
-It takes the parameter from the method out of the URL path, so what every keyspace and table and path are passed in will be used for this method.  It then calls a basic select query based on that keyspace and table:
-```
-  'SELECT * FROM %s.%s' % (keyspace, table)
-```
-
-The templates under web/templates are basic jinja2 templates that are similiar to JSP's.  Everything between {%  %}  is part of the script for that template.  Then the content for the page gets pulled in where the {{ content }} is defined.
+| Group Link | Group Members |
+| ---------- |:-------------:|
+| [Group 1](link) | [Name](link), [Name](link), [Name](link), [Name](Link)
+| [Group 2](to be added) | names to be added
+| [Group 3](to be added) | names to be added
+| [Group 4](to be added) | names to be added
+| [Group 5](to be added) | names to be added
+| [Group 6](to be added) | names to be added
+| [Group 7](to be added) | names to be added
+=======
