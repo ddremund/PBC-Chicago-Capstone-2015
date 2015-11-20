@@ -507,9 +507,9 @@ And the presentation of the table can be shown here:
  
 
 ##### Unimplemented Extensions:
-The model could be extended to account for the number of fraudulent credit cards by date.
+1) The model could be extended to account for the number of fraudulent credit cards by date.  This could be achieved by group credit card receipts by date and matching against the fraudulent credit card list.
 
-This could be achieved by group credit card receipts by date and matching against the fraudulent credit card list.
+2) A new fraud detection needs to be implemented.  The current assumption and implementation is very poor.  We could do fraud detection based on timeframe and previous behaviours.
 
 
 
