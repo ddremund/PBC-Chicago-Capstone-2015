@@ -392,10 +392,12 @@ Query 2:
 Corresponding images for these queries can be seen here:
 
 Query 1:
+
 <img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph1.PNG" width=733/ alt="Searching receipts by product">  
 
 
 Query 2:
+
 <img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=400/ alt="Searching receipts by product">  
 ##### Future Extensions:
 
