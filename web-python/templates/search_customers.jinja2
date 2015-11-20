@@ -16,6 +16,35 @@
     <section>
     <div id="facet" style="float:left;width:20%">
     Narrow Results By:<br><br>
+
+{% if states %}
+  <b>State:</b><br>
+
+  {% for state in states %}
+  {% set new_filter_by = 'state:"' + state.name + '"'%}
+  {% if filter_by %}
+    {% set new_filter_by = filter_by + " AND " + new_filter_by %}
+  {% endif %}
+
+  <a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", new_filter_by) }}">{{ state.name }}:</a>&nbsp;{{ state.amount}}<br>
+  {% endfor %}
+  <br>
+{% endif %}
+
+{% if cities %}
+  <b>City:</b><br>
+
+  {% for city in cities %}
+  {% set new_filter_by = 'city:"' + city.name + '"'%}
+  {% if filter_by %}
+    {% set new_filter_by = filter_by + " AND " + new_filter_by %}
+  {% endif %}
+
+  <a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", new_filter_by) }}">{{ city.name }}:</a>&nbsp;{{ city.amount}}<br>
+  {% endfor %}
+  <br>
+{% endif %}
+
 {% if zipcodes %}
   <b>Zipcode:</b><br>
 
@@ -35,20 +64,32 @@
         <br>
         <table border="1">
         <th>&nbsp;Customer Name&nbsp;</th>
+        <th>&nbsp;State&nbsp;</th>
+        <th>&nbsp;City&nbsp;</th>
         <th>&nbsp;Zipcode&nbsp;</th>
         <th>&nbsp;CC Number&nbsp;</th>
         <th>&nbsp;All Receipts&nbsp;</th>
         {% if customers %}
             {% for customer in customers %}
 
-                {% set new_filter_by = 'zipcode:"' + customer.zipcode + '"'%}
+                {% set zip_new_filter_by = 'zipcode:"' + customer.zipcode + '"'%}
                   {% if filter_by %}
-                    {% set new_filter_by = filter_by + " AND " + new_filter_by %}
+                    {% set zip_new_filter_by = filter_by + " AND " + zip_new_filter_by %}
                   {% endif %}
+                {% set city_new_filter_by = 'city:"' + customer.city + '"'%}
+                                  {% if filter_by %}
+                                    {% set city_new_filter_by = filter_by + " AND " + city_new_filter_by %}
+                                  {% endif %}
+                {% set state_new_filter_by = 'state:"' + customer.state + '"'%}
+                                  {% if filter_by %}
+                                    {% set state_new_filter_by = filter_by + " AND " + state_new_filter_by %}
+                                  {% endif %}
 
                 <tr>
                 <td>&nbsp;{{ customer.customer_name }}</td>
-                <td><a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", new_filter_by) }}">&nbsp;{{ customer.zipcode }}</a></td>
+                <td><a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", state_new_filter_by) }}">&nbsp;{{ customer.state }}</a></td>
+                <td><a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", city_new_filter_by) }}">&nbsp;{{ customer.city }}</a></td>
+                <td><a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", zip_new_filter_by) }}">&nbsp;{{ customer.zipcode }}</a></td>
                 <td>&nbsp;{{ customer.credit_card_number }}</td>
                 <td><a href="/web/credit_card?cc_no={{ customer.credit_card_number }}">&nbsp;Receipt List</a></td>
                 </tr>
