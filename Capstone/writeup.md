@@ -6,12 +6,12 @@ Group: Derek Remund, Gene Tang
 ##### Goal
 The goal of this task is to determine fraudulent credit cards.  
 
-####### Credit cards are determined to be fraudulent if they are used in more than one state as defined by the task.
+###### Credit cards are determined to be fraudulent if they are used in more than one state as defined by the task.
 
 We want to be able to visually show these things:
 1)	Top 20 most fraudulent credit card numbers based on the number of states they were used
 2)	Number of transactions that were fraudulent per states 
-#### New and Existing Cassandra Tables
+##### New and Existing Cassandra Tables
 Looking at the existing schema, the most pertinent tables to use to satisfy the above queries are the following:
 ```
 receipts_by_credit_card (transactions where credit cards were used)
@@ -47,7 +47,7 @@ CREATE TABLE retail.fraudulent_credit_card_use_by_state (
 Notes: We list the number of fraudulent transactions per state (identified by state and num_transactions).  Timeuuid is used to give uniqueness.
 ```
 
-#### Detecting fraudulent credit card use with Spark.
+##### Detecting fraudulent credit card use with Spark.
 RetailRollup was used as a basis for this FraudDetection Spark Class.
 
 Using Scala the basic algorithm will be as follows:
@@ -120,7 +120,7 @@ For 'fraudulent_credit_card_use_by_state':
 Notes: We join the fraudulent credit cards we know, back to the original transactions table.  We then count the number occurrences and the populate the table.
 ```
 
-#### Displaying the information on the application.
+##### Displaying the information on the application.
 
 Added the following entries to index.jinja2:
 
@@ -142,5 +142,5 @@ Query 2:
   </li>
 ```
 
-#### Future Extensions:
+##### Future Extensions:
 
