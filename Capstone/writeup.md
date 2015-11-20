@@ -460,8 +460,7 @@ Our Python application is updated in index.jinja2:
 ```
 
 And our output table looks like the following:
-
-
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph4.PNG" width=733/ alt="number of fraudulent credit cards used per state">  
 
 ###### Determining number of fraud credit card transactions per state
 
