@@ -238,16 +238,16 @@ Finally, we expose our new functionality to the user by linking to it from the `
 </li>
 ```
 Our new UI allows searching of receipts by freeform product title:  
-<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr1.tiff" width=560/ alt="Searching receipts by product">  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr1.tiff" width=560 alt="Searching receipts by product"/>  
 
 The results can be filtered by the `quantity` facet:  
-<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr3.tiff" width=582/ alt="Filter by quantity">  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr3.tiff" width=582 alt="Filter by quantity"/>  
 
 From the results page the details of any individual receipt can quickly be accessed:  
-<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr2.tiff" width=889/ alt="Receipt detail">  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr2.tiff" width=889 alt="Receipt detail"/>  
 
 Similarly, the details of any product result are just a click away:  
-<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr4.tiff" width=733/ alt="Searching receipts by product">  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr4.tiff" width=733 alt="Searching receipts by product"/>  
 
 
 #### Task 2: Fraud Detection using Spark
@@ -393,18 +393,18 @@ Corresponding images for these queries can be seen here:
 
 Query 1:
 
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph1.PNG" width=733/ alt="number of fraudulent credit cards used per state">  
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph1.PNG" width=733 alt="number of fraudulent credit cards used per state"/>  
 
 
 Query 2:
 
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=200/ alt="most fraudulent credit card by count of state they were used in">  
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=200 alt="most fraudulent credit card by count of state they were used in"/>  
 
 
 ##### Future Extensions:
 
 ###### Customer Table Extension
-An extension was added to the Spark Fraud Detection, combining the work from the addition of the customers table.  This extension allows us to determine which state has the most owners of fraudulent credit cards.  
+An extension was added to the Spark Fraud Detection, combining the work from the addition of the customers table (see Task 3 below).  This extension allows us to determine which state has the most owners of fraudulent credit cards.  
 
 The extension was took the existing fraudulent credit card list and matched it against the owner based on the state they lived in.  Joins were performed on the credit card number itself, as this is unique to a customer:
 
@@ -457,3 +457,349 @@ The output graph is as follows:
 The model could be extended to account for the number of fraudulent credit cards by date.
 
 This could be achieved by group credit card receipts by date and matching against the fraudulent credit card list.
+
+#### Task 3: Implement `customers` Table
+##### Goal
+The goal of this task is to create a customer table that provides basic customer info while also linking customers to their receipts.
+
+##### Schema Analysis
+The existing `retail` keyspace includes several tables storing receipt data.  The `receipts_by_credit_card` table is particularly interesting here:
+```CQL
+CREATE TABLE retail.receipts_by_credit_card (
+    credit_card_number bigint,
+    receipt_timestamp timestamp,
+    receipt_id bigint,
+    credit_card_type text static,
+    receipt_total decimal,
+    store_id int,
+    PRIMARY KEY (credit_card_number, receipt_timestamp, receipt_id)
+) WITH CLUSTERING ORDER BY (receipt_timestamp DESC, receipt_id DESC)
+```
+
+Using only a credit card number we can pull up all the associated receipts.  We will use this link to provide the ability to associate customers with previous purchases.  
+
+We considered a variety of options, including a `set<bigint>` column of receipt_ids, or having separate customer summary tables along with a fully denormalized customer receipts table.  However, the typical workload for a store should mean that pulling all receipts for a customer is relatively rare, and we will use Solr indexing for customer search.  It should be fine to construct a customer table that allows us to then query for their receipts using their credit card number if required.
+
+##### Table and Index Creation
+
+Thus we construct a new `retail.customers` table:
+```CQL
+CREATE TABLE retail.customers (
+    customer_name text,
+    state text,
+    city text,
+    zipcode text,
+    credit_card_number bigint,
+    solr_query text,
+    PRIMARY KEY (customer_name, state, city, zipcode, credit_card_number)
+) WITH CLUSTERING ORDER BY (state ASC, city ASC, zipcode ASC, credit_card_number ASC)
+```
+
+The extra location attributes will help us with faceting when determining just what customer we are looking for in the search UI.
+
+To provide search capabilities we construct a Solr index schema.
+###### customers.xml
+```XML
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<schema name="tracks" version="1.5">
+ <types>
+  <fieldType name="string" class="solr.StrField"/>
+  <fieldType name="text" class="solr.TextField">
+     <analyzer>
+        <tokenizer class="solr.StandardTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+     </analyzer>
+  </fieldType>
+  <fieldType name="int"     class="solr.IntField"/>
+  <fieldType name="bigint"  class="solr.BCDLongField"/>
+  <fieldType name="uuid"    class="solr.UUIDField"/>
+  <fieldType name="timeuuid" class="solr.UUIDField"/>
+  <fieldType name="decimal" class="com.datastax.bdp.search.solr.core.types.DecimalStrField"/>
+  <fieldType name="long"    class="solr.SortableLongField"/>
+  <fieldType name="float"   class="solr.SortableFloatField"/>
+  <fieldType name="date"    class="org.apache.solr.schema.TrieDateField"/>
+ </types>
+ <fields>
+
+    <field name="customer_name"  type="text" indexed="true"  stored="true"/>
+    <field name="state" type="string" indexed="true" stored="true"/>
+    <field name="city" type="string" indexed="true" stored="true"/>
+    <field name="zipcode"  type="string" indexed="true"  stored="true"/>
+    <field name="credit_card_number" type="bigint" indexed="true" stored="true"/>
+ </fields>
+
+<defaultSearchField>customer_name</defaultSearchField>
+<uniqueKey>(customer_name,state,city,zipcode,credit_card_number)</uniqueKey>
+
+</schema>
+```
+
+We then create our index:
+```
+dsetool create_core retail.customers schema=customers.xml solrconfig=solrconfig.xml reindex=true
+```
+
+The index has now been added to the `customers` table.
+```CQL
+CREATE TABLE retail.customers (
+    customer_name text,
+    state text,
+    city text,
+    zipcode text,
+    credit_card_number bigint,
+    solr_query text,
+    PRIMARY KEY (customer_name, state, city, zipcode, credit_card_number)
+) WITH CLUSTERING ORDER BY (state ASC, city ASC, zipcode ASC, credit_card_number ASC)
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+CREATE CUSTOM INDEX retail_customers_solr_query_index ON retail.customers (solr_query) USING 'com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex';
+```
+
+##### Populating Zipcodes
+The `retail` keyspace already contains a `zipcodes` table:
+```CQL
+CREATE TABLE retail.zipcodes (
+    zipcode text,
+    city text,
+    lat float,
+    long float,
+    population bigint,
+    state text,
+    wages bigint,
+    PRIMARY KEY (zipcode, city)
+) WITH CLUSTERING ORDER BY (city ASC)
+```
+However, it is currently empty.  We do have a pip-delimited CSV file containing zipcode data, so we use that to populate the table:
+```CQL
+COPY retail.zipcodes (zipcode, city, state, lat, long, population, wages) FROM '../csv/zipcodes.csv' WITH delimiter = '|';
+```
+
+##### Populating Customers
+In order to properly link customers to receipts and provide a sampling of the associated workload, we modify the supplied `scans.jmx` file to add several pieces.
+
+Parse customer names:
+```XML
+<hashTree/>
+    <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Customers" enabled="true">
+        <stringProp name="filename">../csv/4000names.csv</stringProp>
+            <stringProp name="fileEncoding"></stringProp>
+        <stringProp name="variableNames">customer_name</stringProp>
+        <stringProp name="delimiter"></stringProp>
+        <boolProp name="quotedData">false</boolProp>
+        <boolProp name="recycle">true</boolProp>
+        <boolProp name="stopThread">false</boolProp>
+        <stringProp name="shareMode">shareMode.all</stringProp>
+    </CSVDataSet>
+<hashTree/>
+```
+Parse zip codes:
+```XML
+<hashTree/>
+    <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV zipcodes" enabled="true">
+        <stringProp name="filename">../csv/zipcodes.csv</stringProp>
+        <stringProp name="fileEncoding"></stringProp>
+        <stringProp name="variableNames">zipcode,city,state,lat,long,population,wages</stringProp>
+        <stringProp name="delimiter">|</stringProp>
+        <boolProp name="quotedData">false</boolProp>
+        <boolProp name="recycle">true</boolProp>
+        <boolProp name="stopThread">false</boolProp>
+        <stringProp name="shareMode">shareMode.all</stringProp>
+    </CSVDataSet>
+<hashTree/>
+```
+Insert customer for each receipt:
+```XML
+<CassandraSampler guiclass="TestBeanGUI" testclass="CassandraSampler" testname="Insert Customer" enabled="true">
+    <stringProp name="sessionName">cc</stringProp>
+    <stringProp name="queryType">Prepared Statement</stringProp>
+    <stringProp name="query">insert into customers (customer_name, city, state, zipcode, credit_card_number) values (?,?,?,?,?)</stringProp>
+    <stringProp name="queryArguments">${customer_name},${city},${state},${zipcode},${credit_card_number}</stringProp>
+    <stringProp name="variableNames"></stringProp>
+    <stringProp name="resultVariable"></stringProp>
+    <stringProp name="consistencyLevel">ONE</stringProp>
+    <stringProp name="batchSize"></stringProp>
+</CassandraSampler>
+```
+Running JMeter using our updated `scans.jmx` gives us some customer data to work with:
+```
+jmeter -n -t scans.jmx
+```
+
+##### Constructing Search UI
+We will modify the existing python web application to expose our new customer functionality.  First we create a new Jinja template to provide the UI for search.  This template provides a table for the search results as well as a sidebar for further filtering by state, city, and zipcode.
+
+###### search_receipts.jinja2
+```jinja
+{% extends "/base.jinja2" %}
+
+{% block head %}
+{% endblock %}
+
+{% block body %}
+      Solr Search of Customers by Name:<br>
+     <div id="solr_div">
+
+    <form action="/web/search_customers">
+      <input type="text" name="s">
+      <input type="submit" value="Search">
+    </form>
+    </div>
+<br>
+    <section>
+    <div id="facet" style="float:left;width:20%">
+    Narrow Results By:<br><br>
+
+{% if states %}
+  <b>State:</b><br>
+
+  {% for state in states %}
+  {% set new_filter_by = 'state:"' + state.name + '"'%}
+  {% if filter_by %}
+    {% set new_filter_by = filter_by + " AND " + new_filter_by %}
+  {% endif %}
+
+  <a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", new_filter_by) }}">{{ state.name }}:</a>&nbsp;{{ state.amount}}<br>
+  {% endfor %}
+  <br>
+{% endif %}
+
+{% if cities %}
+  <b>City:</b><br>
+
+  {% for city in cities %}
+  {% set new_filter_by = 'city:"' + city.name + '"'%}
+  {% if filter_by %}
+    {% set new_filter_by = filter_by + " AND " + new_filter_by %}
+  {% endif %}
+
+  <a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", new_filter_by) }}">{{ city.name }}:</a>&nbsp;{{ city.amount}}<br>
+  {% endfor %}
+  <br>
+{% endif %}
+
+{% if zipcodes %}
+  <b>Zipcode:</b><br>
+
+  {% for zipcode in zipcodes %}
+  {% set new_filter_by = 'zipcode:"' + zipcode.name + '"'%}
+  {% if filter_by %}
+    {% set new_filter_by = filter_by + " AND " + new_filter_by %}
+  {% endif %}
+
+  <a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", new_filter_by) }}">{{ zipcode.name }}:</a>&nbsp;{{ zipcode.amount}}<br>
+  {% endfor %}
+  <br>
+{% endif %}
+
+    </div>
+    <div id="list_div" style="float:right;width:80%">
+        <br>
+        <table border="1">
+        <th>&nbsp;Customer Name&nbsp;</th>
+        <th>&nbsp;State&nbsp;</th>
+        <th>&nbsp;City&nbsp;</th>
+        <th>&nbsp;Zipcode&nbsp;</th>
+        <th>&nbsp;CC Number&nbsp;</th>
+        <th>&nbsp;All Receipts&nbsp;</th>
+        {% if customers %}
+            {% for customer in customers %}
+
+                {% set zip_new_filter_by = 'zipcode:"' + customer.zipcode + '"'%}
+                  {% if filter_by %}
+                    {% set zip_new_filter_by = filter_by + " AND " + zip_new_filter_by %}
+                  {% endif %}
+                {% set city_new_filter_by = 'city:"' + customer.city + '"'%}
+                  {% if filter_by %}
+                    {% set city_new_filter_by = filter_by + " AND " + city_new_filter_by %}
+                  {% endif %}
+                {% set state_new_filter_by = 'state:"' + customer.state + '"'%}
+                  {% if filter_by %}
+                    {% set state_new_filter_by = filter_by + " AND " + state_new_filter_by %}
+                  {% endif %}
+
+                <tr>
+                <td>&nbsp;{{ customer.customer_name }}</td>
+                <td><a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", state_new_filter_by) }}">&nbsp;{{ customer.state }}</a></td>
+                <td><a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", city_new_filter_by) }}">&nbsp;{{ customer.city }}</a></td>
+                <td><a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", zip_new_filter_by) }}">&nbsp;{{ customer.zipcode }}</a></td>
+                <td>&nbsp;{{ customer.credit_card_number }}</td>
+                <td><a href="/web/credit_card?cc_no={{ customer.credit_card_number }}">&nbsp;Receipt List</a></td>
+                </tr>
+            {% endfor %}
+        {% endif %}
+        </table>
+</div>
+</section>
+{% endblock %}
+
+{% block tail %}
+{% endblock %}
+```
+Now that we have a target template we can write the route handler logic into the `web.py`:
+```python
+@web_api.route('/search_customers')
+def search_customers():
+
+    search_term = request.args.get('s')
+
+    if not search_term:
+        return render_template('search_customers.jinja2',
+                               customers = None)
+
+    filter_by = request.args.get('filter_by')
+
+    solr_query = '"q":"customer_name:%s"' % search_term.replace('"','\\"').encode('utf-8')
+
+    if filter_by:
+        solr_query += ',"fq":"%s"' % filter_by.replace('"','\\"').encode('utf-8')
+
+    query = "SELECT * FROM customers WHERE solr_query = '{%s}' LIMIT 300" % solr_query
+
+    # get the response
+    results = cassandra_helper.session.execute(query)
+
+    facet_query = 'SELECT * FROM customers WHERE solr_query = ' \
+                  '\'{%s,"facet":{"field":["state","city","zipcode"]}}\' ' % solr_query
+
+    facet_results = cassandra_helper.session.execute(facet_query)
+    facet_string = facet_results[0].get("facet_fields")
+
+    # convert the facet string to an ordered dict because solr sorts them desceding by count, and we like it!
+    facet_map = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(facet_string)
+
+    return render_template('search_customers.jinja2',
+                           search_term = search_term,
+                           states = filter_facets(facet_map['state']),
+                           cities = filter_facets(facet_map['city']),
+                           zipcodes = filter_facets(facet_map['zipcode']),
+                           customers = results,
+                           filter_by = filter_by)
+```
+Finally, we expose our new functionality to the user by linking to it from the `index.jinja2` template:
+```html
+<li>
+    <a href="/web/search_customers">Search for Customers</a>
+</li>
+```
+
+Our new UI allows searching of customers by name:  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/customer1.tiff" width=740 alt="Searching customers by name"/> 
+The results can be filtered by the state, city, or zipcode.
+
+Clicking the "Receipts List" link pulls all the receipts for that customer card:  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/customer2.tiff" width=1020 alt="CC Receipt List"/>  
+
+From there we can access the details of an individual receipt:  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/customer3.tiff" width=1012 alt="Receipt detail"/>  
