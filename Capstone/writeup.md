@@ -46,7 +46,7 @@ The `product_name` column is equivalent to `title` in other product tables.
 
 ##### Create Index
 
-The first task is to create a Solr index on the `receipts` table and index our fields.  We also need to account for types like `timeuuid` and `bigint` by including the mappins in the `<types>` section of our XML file.
+The first task is to create a Solr index on the `receipts` table and index our fields.  We need to account for types like `timeuuid` and `bigint` by including the mappings in the `<types>` section of our XML file.  We index several fields to allow for faceting and to make future functionality additions easier.
 
 ###### receipts.xml:
 ```XML
@@ -130,7 +130,7 @@ CREATE CUSTOM INDEX retail_receipts_unit_price_index ON retail.receipts (unit_pr
 
 ##### Application Updates
 
-We will modify the existing python web application to expose our new search functionality.  First we create a new Jinja template to provide the UI for search.
+We will modify the existing python web application to expose our new search functionality.  First we create a new Jinja template to provide the UI for search.  This template provides a table for the search results as well as a sidebar for further filtering quantity of a product purchased.
 
 ###### search_receipts.jinja2
 ```jinja
@@ -192,6 +192,63 @@ We will modify the existing python web application to expose our new search func
 {% block tail %}
 {% endblock %}
 ```
+Now that we have a target template we can write the route handler logic into the `web.py`:
+```python
+@web_api.route('/search_receipts')
+def search_receipts():
+
+    search_term = request.args.get('s')
+
+    if not search_term:
+        return render_template('search_receipts.jinja2',
+                               receipts = None)
+
+    filter_by = request.args.get('filter_by')
+
+    solr_query = '"q":"product_name:%s"' % search_term.replace('"','\\"').encode('utf-8')
+
+    if filter_by:
+        solr_query += ',"fq":"%s"' % filter_by.replace('"','\\"').encode('utf-8')
+
+    query = "SELECT * FROM receipts WHERE solr_query = '{%s}' LIMIT 300" % solr_query
+
+    # get the response
+    results = cassandra_helper.session.execute(query)
+
+    facet_query = 'SELECT * FROM receipts WHERE solr_query = ' \
+                  '\'{%s,"facet":{"field":["supplier_name","quantity"]}}\' ' % solr_query
+
+    facet_results = cassandra_helper.session.execute(facet_query)
+    facet_string = facet_results[0].get("facet_fields")
+
+    # convert the facet string to an ordered dict because solr sorts them desceding by count, and we like it!
+    facet_map = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(facet_string)
+
+    return render_template('search_receipts.jinja2',
+                           search_term = search_term,
+                           quantities = filter_facets(facet_map['quantity']),
+                           suppliers = filter_facets(facet_map['supplier_name']),
+                           receipts = results,
+                           filter_by = filter_by)
+```
+Finally, we expose our new functionality to the user by linking to it from the `index.jinja2` template:
+```html
+<li>
+    <a href="/web/search_receipts">Search Receipts by Product</a>
+</li>
+```
+Our new UI allows searching of receipts by freeform product title:  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr1.tiff" width=560/ alt="Searching receipts by product">  
+
+The results can be filtered by the `quantity` facet:  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr3.tiff" width=582/ alt="Filter by quantity">  
+
+From the results page the details of any individual receipt can quickly be accessed:  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr2.tiff" width=889/ alt="Receipt detail">  
+
+Similarly, the details of any product result are just a click away:  
+<img src="https://ab7f2ee757dab14f977f-412ed90bcf7411fa0e77ed8d19b04771.ssl.cf1.rackcdn.com/solr4.tiff" width=733/ alt="Searching receipts by product">  
+
 
 #### Task 2: Fraud Detection using Spark
 ##### Goal
