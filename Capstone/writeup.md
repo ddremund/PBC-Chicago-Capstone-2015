@@ -550,7 +550,7 @@ CREATE TABLE retail.customers (
 ) WITH CLUSTERING ORDER BY (state ASC, city ASC, zipcode ASC, credit_card_number ASC)
 ```
 
-The extra location attributes will help us with faceting when determining just what customer we are looking for in the search UI.
+Because none of these attributes individually can identify a unique customer, we include them in the key in increasing orders of specificity to allow for natural winnowing of results to the desired customer.  We will facet on these in the user interface.
 
 To provide search capabilities we construct a Solr index schema.
 ###### customers.xml
