@@ -408,7 +408,7 @@ The UI was extended using the following code in index.jinja2:
 
 The output graph is as follows:
 
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph3.PNG" width=733/ alt="Number of fraudulent credit card owners by state">  
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph3.PNG" width=200/ alt="Amount spent on fraud credit cards">  
 
 
 ###### Amount spent by Fraud Credit Cards   
