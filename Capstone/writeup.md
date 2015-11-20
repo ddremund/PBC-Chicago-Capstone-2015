@@ -3,7 +3,7 @@
 Group: Derek Remund, Gene Tang
 
 #### Task 2: Fraud Detection using Spark
-#### Goal
+##### Goal
 The goal of this task is to determine fraudulent credit cards.  
 
 ####### Credit cards are determined to be fraudulent if they are used in more than one state as defined by the task.
