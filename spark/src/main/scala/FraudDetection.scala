@@ -33,6 +33,8 @@ object FraudDetection {
     // Create an RDD with tuples mapping store_id with credit_card_number (representing a transaction at that store)
     val receiptsByCC = sc.cassandraTable("retail","receipts_by_credit_card")
     val creditCardByStoreID = receiptsByCC.map(r => (r.getInt("store_id"), r.getLong("credit_card_number")))
+    val creditCardByAmountSpent = receiptsByCC.map(r => (r.getLong("credit_card_number"), r.getDecimal("receipt_total")))
+
 
     // Create an RDD with customer credit card and where they live
     val customerCCNumAndState = sc.cassandraTable("retail", "customers").map(r => (r.getLong("credit_card_number"),r.getString("state")))
@@ -65,6 +67,10 @@ object FraudDetection {
     // Load data showing where all the fraudulent credit cards come from by state
     customerCCNumAndState.join(fradulentCC).map({case (k,v) => (v._1,1)}).reduceByKey(_ + _).map({case (k,v) => ("US-" + k, v, TimeUuid())})
       .saveToCassandra("retail","fraudulent_cc_by_owner_state",SomeColumns("state","num_credit_cards","time_uuid"))
+
+    // Determines the total amount spent per fraudulent creditcard and inserts it into appropriate table
+    creditCardByAmountSpent.join(fradulentCC).map({case (k,v) => (k,v._1)}).reduceByKey(_ + _).map({case (k,v) => (k, v)})
+      .saveToCassandra("retail","amount_spent_by_fraud_cc",SomeColumns("credit_card_number","amount_spent"))
 
 
     //myvalue.collect().foreach(println)
