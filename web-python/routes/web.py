@@ -197,7 +197,7 @@ def search_customers():
     results = cassandra_helper.session.execute(query)
 
     facet_query = 'SELECT * FROM customers WHERE solr_query = ' \
-                  '\'{%s,"facet":{"field":["zipcode"]}}\' ' % solr_query
+                  '\'{%s,"facet":{"field":["state","city","zipcode"]}}\' ' % solr_query
 
     facet_results = cassandra_helper.session.execute(facet_query)
     facet_string = facet_results[0].get("facet_fields")
@@ -207,6 +207,8 @@ def search_customers():
 
     return render_template('search_customers.jinja2',
                            search_term = search_term,
+                           states = filter_facets(facet_map['state']),
+                           cities = filter_facets(facet_map['city']),
                            zipcodes = filter_facets(facet_map['zipcode']),
                            customers = results,
                            filter_by = filter_by)
