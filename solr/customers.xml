@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<schema name="tracks" version="1.5">
+ <types>
+  <fieldType name="string" class="solr.StrField"/>
+  <fieldType name="text" class="solr.TextField">
+     <analyzer>
+        <tokenizer class="solr.StandardTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+     </analyzer>
+  </fieldType>
+  <fieldType name="int"     class="solr.IntField"/>
+  <fieldType name="bigint"  class="solr.BCDLongField"/>
+  <fieldType name="uuid"    class="solr.UUIDField"/>
+  <fieldType name="timeuuid" class="solr.UUIDField"/>
+  <fieldType name="decimal" class="com.datastax.bdp.search.solr.core.types.DecimalStrField"/>
+  <fieldType name="long"    class="solr.SortableLongField"/>
+  <fieldType name="float"   class="solr.SortableFloatField"/>
+  <fieldType name="date"    class="org.apache.solr.schema.TrieDateField"/>
+ </types>
+ <fields>
+    <!-- 
+         docValues="true" is useful for fields that are sorted or faceted on;
+         Less heap memory is used, facets can be faster, and query time
+         join can be faster.
+         
+         Note: Text fields should not have docValue=true.
+    -->
+  
+ 
+
+    <field name="customer_name"  type="text" indexed="true"  stored="true"/>
+    <field name="zipcode"  type="string" indexed="true"  stored="true"/>
+    <field name="credit_card_number" type="bigint" indexed="true" stored="true"/>
+ </fields>
+
+<defaultSearchField>customer_name</defaultSearchField>
+<uniqueKey>(customer_name,zipcode,credit_card_number)</uniqueKey>
+
+</schema>

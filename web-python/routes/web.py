@@ -139,7 +139,7 @@ def search_receipts():
 
     if not search_term:
         return render_template('search_receipts.jinja2',
-                               products = None)
+                               receipts = None)
 
     filter_by = request.args.get('filter_by')
 
@@ -169,6 +169,46 @@ def search_receipts():
                            quantities = filter_facets(facet_map['quantity']),
                            suppliers = filter_facets(facet_map['supplier_name']),
                            receipts = results,
+                           filter_by = filter_by)
+
+@web_api.route('/search_customers')
+def search_customers():
+    # this will search the city field in the zipcodes solr core
+    # the import parameter is 's'
+
+    search_term = request.args.get('s')
+
+    if not search_term:
+        return render_template('search_customers.jinja2',
+                               customers = None)
+
+    filter_by = request.args.get('filter_by')
+
+    # parameters to solr are rows=300  wt (writer type)=json, and q=city:<keyword> sort=zipcode asc
+    # note: escape quote any quotes that are part of the query / filter query
+    solr_query = '"q":"customer_name:%s"' % search_term.replace('"','\\"').encode('utf-8')
+
+    if filter_by:
+        solr_query += ',"fq":"%s"' % filter_by.replace('"','\\"').encode('utf-8')
+
+    query = "SELECT * FROM customers WHERE solr_query = '{%s}' LIMIT 300" % solr_query
+
+    # get the response
+    results = cassandra_helper.session.execute(query)
+
+    facet_query = 'SELECT * FROM customers WHERE solr_query = ' \
+                  '\'{%s,"facet":{"field":["zipcode"]}}\' ' % solr_query
+
+    facet_results = cassandra_helper.session.execute(facet_query)
+    facet_string = facet_results[0].get("facet_fields")
+
+    # convert the facet string to an ordered dict because solr sorts them desceding by count, and we like it!
+    facet_map = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(facet_string)
+
+    return render_template('search_customers.jinja2',
+                           search_term = search_term,
+                           zipcodes = filter_facets(facet_map['zipcode']),
+                           customers = results,
                            filter_by = filter_by)
 
 #

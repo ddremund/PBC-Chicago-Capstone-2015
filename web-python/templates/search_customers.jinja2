@@ -1,0 +1,63 @@
+{% extends "/base.jinja2" %}
+
+{% block head %}
+{% endblock %}
+
+{% block body %}
+      Solr Search on of Customers by Name:<br>
+     <div id="solr_div">
+
+    <form action="/web/search_customers">
+      <input type="text" name="s">
+      <input type="submit" value="Search">
+    </form>
+    </div>
+<br>
+    <section>
+    <div id="facet" style="float:left;width:20%">
+    Narrow Results By:<br><br>
+{% if zipcodes %}
+  <b>Zipcode:</b><br>
+
+  {% for zipcode in zipcodes %}
+  {% set new_filter_by = 'zipcode:"' + zipcode.name + '"'%}
+  {% if filter_by %}
+    {% set new_filter_by = filter_by + " AND " + new_filter_by %}
+  {% endif %}
+
+  <a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", new_filter_by) }}">{{ zipcode.name }}:</a>&nbsp;{{ zipcode.amount}}<br>
+  {% endfor %}
+  <br>
+{% endif %}
+
+    </div>
+    <div id="list_div" style="float:right;width:80%">
+        <br>
+        <table border="1">
+        <th>&nbsp;Customer Name&nbsp;</th>
+        <th>&nbsp;Zipcode&nbsp;</th>
+        <th>&nbsp;CC Number&nbsp;</th>
+        <th>&nbsp;All Receipts&nbsp;</th>
+        {% if customers %}
+            {% for customer in customers %}
+
+                {% set new_filter_by = 'zipcode:"' + customer.zipcode + '"'%}
+                  {% if filter_by %}
+                    {% set new_filter_by = filter_by + " AND " + new_filter_by %}
+                  {% endif %}
+
+                <tr>
+                <td>&nbsp;{{ customer.customer_name }}</td>
+                <td><a href="{{ makeURL("/web/search_customers","s", search_term, "filter_by", new_filter_by) }}">&nbsp;{{ customer.zipcode }}</a></td>
+                <td>&nbsp;{{ customer.credit_card_number }}</td>
+                <td><a href="/web/credit_card?cc_no={{ customer.credit_card_number }}">&nbsp;Receipt List</a></td>
+                </tr>
+            {% endfor %}
+        {% endif %}
+        </table>
+</div>
+</section>
+{% endblock %}
+
+{% block tail %}
+{% endblock %}

@@ -22,6 +22,28 @@ CREATE TABLE retail.inventory_per_store (
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
 
+CREATE TABLE retail.customers (
+    customer_name text,
+    zipcode text,
+    credit_card_number bigint,
+    solr_query text,
+    PRIMARY KEY (customer_name, zipcode, credit_card_number)
+) WITH CLUSTERING ORDER BY (zipcode ASC, credit_card_number ASC)
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+CREATE CUSTOM INDEX retail_customers_solr_query_index ON retail.customers (solr_query) USING 'com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex';
+
 CREATE TABLE retail.stores (
     store_id int PRIMARY KEY,
     address text,
@@ -104,13 +126,13 @@ CREATE CUSTOM INDEX retail_products_by_id_supplier_id_index ON retail.products_b
 CREATE CUSTOM INDEX retail_products_by_id_supplier_name_index ON retail.products_by_id (supplier_name) USING 'com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex';
 CREATE CUSTOM INDEX retail_products_by_id_title_index ON retail.products_by_id (title) USING 'com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex';
 
-CREATE TABLE retail.num_times_fraud_cc_used_in_diff_state (
+CREATE TABLE retail.sales_by_state (
     dummy text,
-    count int,
-    credit_card_number bigint,
-    time_uuid timeuuid,
-    PRIMARY KEY (dummy, count, credit_card_number, time_uuid)
-) WITH CLUSTERING ORDER BY (count DESC, credit_card_number DESC, time_uuid ASC)
+    receipts_total decimal,
+    state text,
+    region text,
+    PRIMARY KEY (dummy, receipts_total, state)
+) WITH CLUSTERING ORDER BY (receipts_total DESC, state ASC)
     AND bloom_filter_fp_chance = 0.01
     AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
     AND comment = ''
@@ -227,27 +249,6 @@ CREATE TABLE retail.products_by_supplier (
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
 
-CREATE TABLE retail.sales_by_state (
-    dummy text,
-    receipts_total decimal,
-    state text,
-    region text,
-    PRIMARY KEY (dummy, receipts_total, state)
-) WITH CLUSTERING ORDER BY (receipts_total DESC, state ASC)
-    AND bloom_filter_fp_chance = 0.01
-    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
-    AND comment = ''
-    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
-    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
-    AND dclocal_read_repair_chance = 0.1
-    AND default_time_to_live = 0
-    AND gc_grace_seconds = 864000
-    AND max_index_interval = 2048
-    AND memtable_flush_period_in_ms = 0
-    AND min_index_interval = 128
-    AND read_repair_chance = 0.0
-    AND speculative_retry = '99.0PERCENTILE';
-
 CREATE TABLE retail.real_time_analytics (
     series text,
     timewindow timestamp,
@@ -291,26 +292,6 @@ CREATE TABLE retail.receipts_by_store_date (
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
 
-CREATE TABLE retail.fraudulent_credit_card_use_by_state (
-    state text,
-    num_transactions int,
-    time_uuid timeuuid,
-    PRIMARY KEY (state, num_transactions, time_uuid)
-) WITH CLUSTERING ORDER BY (num_transactions ASC, time_uuid ASC)
-    AND bloom_filter_fp_chance = 0.01
-    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
-    AND comment = ''
-    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
-    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
-    AND dclocal_read_repair_chance = 0.1
-    AND default_time_to_live = 0
-    AND gc_grace_seconds = 864000
-    AND max_index_interval = 2048
-    AND memtable_flush_period_in_ms = 0
-    AND min_index_interval = 128
-    AND read_repair_chance = 0.0
-    AND speculative_retry = '99.0PERCENTILE';
-
 CREATE TABLE retail.suppliers (
     supplier_id int PRIMARY KEY,
     supplier_name text
@@ -339,6 +320,7 @@ CREATE TABLE retail.receipts (
     receipt_timestamp timestamp static,
     receipt_total decimal static,
     register_id int static,
+    solr_query text,
     store_id int static,
     total decimal,
     unit_price decimal,
@@ -357,23 +339,9 @@ CREATE TABLE retail.receipts (
     AND min_index_interval = 128
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
+CREATE CUSTOM INDEX retail_receipts_product_id_index ON retail.receipts (product_id) USING 'com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex';
+CREATE CUSTOM INDEX retail_receipts_product_name_index ON retail.receipts (product_name) USING 'com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex';
+CREATE CUSTOM INDEX retail_receipts_quantity_index ON retail.receipts (quantity) USING 'com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex';
+CREATE CUSTOM INDEX retail_receipts_solr_query_index ON retail.receipts (solr_query) USING 'com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex';
+CREATE CUSTOM INDEX retail_receipts_unit_price_index ON retail.receipts (unit_price) USING 'com.datastax.bdp.search.solr.Cql3SolrSecondaryIndex';
 
-CREATE TABLE retail.customers (
-    customer_name text,
-    zipcode text,
-    credit_card_number bigint,
-    PRIMARY KEY (customer_name, zipcode, credit_card_number)
-) WITH CLUSTERING ORDER BY (zipcode ASC, credit_card_number ASC)
-    AND bloom_filter_fp_chance = 0.01
-    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
-    AND comment = ''
-    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
-    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
-    AND dclocal_read_repair_chance = 0.1
-    AND default_time_to_live = 0
-    AND gc_grace_seconds = 864000
-    AND max_index_interval = 2048
-    AND memtable_flush_period_in_ms = 0
-    AND min_index_interval = 128
-    AND read_repair_chance = 0.0
-    AND speculative_retry = '99.0PERCENTILE';
