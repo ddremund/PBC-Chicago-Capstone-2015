@@ -132,8 +132,6 @@ def search():
 
 @web_api.route('/search_receipts')
 def search_receipts():
-    # this will search the city field in the zipcodes solr core
-    # the import parameter is 's'
 
     search_term = request.args.get('s')
 
@@ -143,8 +141,6 @@ def search_receipts():
 
     filter_by = request.args.get('filter_by')
 
-    # parameters to solr are rows=300  wt (writer type)=json, and q=city:<keyword> sort=zipcode asc
-    # note: escape quote any quotes that are part of the query / filter query
     solr_query = '"q":"product_name:%s"' % search_term.replace('"','\\"').encode('utf-8')
 
     if filter_by:
