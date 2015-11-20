@@ -1,5 +1,5 @@
 CREATE KEYSPACE IF NOT EXISTS retail
-WITH replication = { 'class' : 'NetworkTopologyStrategy', 'DC1' : 1};
+WITH replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1};
 
 
 -- static data

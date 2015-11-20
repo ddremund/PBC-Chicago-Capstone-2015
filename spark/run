@@ -1,0 +1,4 @@
+#!/bin/bash
+
+sbt assembly
+dse spark-submit --class FraudDetection target/scala-2.10/spark-retail-assembly-1.1.jar

@@ -14,6 +14,8 @@ libraryDependencies += "org.apache.spark" %% "spark-hive" % sparkVersion % "prov
 
 libraryDependencies += "com.datastax.spark" %% "spark-cassandra-connector" % sparkCassandraVersion % "provided"
 
+libraryDependencies += "com.gilt" %% "gfc-timeuuid" % "0.0.5"
+
 resolvers += Resolver.sonatypeRepo("public")
 
 //We do this so that Spark Dependencies will not be bundled with our fat jar but will still be included on the classpath

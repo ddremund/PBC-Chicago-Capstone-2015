@@ -63,6 +63,16 @@
                 Google Charts: Table of Receipts Example
             </a>
         </li>
+	<li>
+            <a href="/gcharts/GeoChart/?url=/api/simplequery&options={height:600,region:'US',resolution:'provinces'}&q=select state,num_transactions from fraudulent_credit_card_use_by_state">
+                    Google Charts: Number of fraudulent credit cards used by State
+            </a>
+        </li>
+	<li>
+             <a href="/gcharts/Table/?url=/api/simplequery&q=select credit_card_number,count from num_times_fraud_cc_used_in_diff_state limit 20&order_column=count&order_direction=-1">
+                    Google Charts: Top 20 most fraudulent credit cards based on number of states used in
+             </a>
+        </li>
         </ul>
         <br>
         Rest API Example
