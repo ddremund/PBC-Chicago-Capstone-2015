@@ -256,7 +256,7 @@ The goal of this task is to determine fraudulent credit cards.  Credit cards are
 
 The goal can be adapted by asking the question:
 
-###### Give me the top 20 most fraudulent credit card numbers based on the number of states they were used
+###### Give me the top 20 most fraudulent credit card numbers grouped by state
 
 ##### New and Existing Cassandra Tables
 Looking at the existing schema, the most pertinent tables to use to satisfy the above queries are the following:
@@ -358,7 +358,7 @@ Added the following entries to index.jinja2:
 ```
 With the following corresponding table:
 
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph1.PNG" width=733/ alt="number of fraudulent credit cards used per state">  
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=200/ alt="most fraudulent credit card by count of state they were used in">  
 
 ##### Extensions:
 
@@ -501,7 +501,7 @@ The Python application code is updated:
 ```
 
 And the presentation of the table can be shown here:
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=200/ alt="most fraudulent credit card by count of state they were used in">  
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph1.PNG" width=733/ alt="number of fraudulent credit cards used per state">  
 
 
  
