@@ -24,17 +24,18 @@ object FraudDetection {
 // We set master on the command line for flexibility
     val sc = new SparkContext(conf)
 
-    // Create some general RDDs
+    // Create an RDD with tuples mapping store_id to state
     val stores = sc.cassandraTable("retail","stores").select("store_id","address",
       "address_2","address_3","city","state","zip","size_in_sf"
     ).as(FraudStore)
-    val receiptsByCC = sc.cassandraTable("retail","receipts_by_credit_card")
-
-    // Create an RDD with tuples mapping store_id to state
     val storeState = stores.map(s => (s.store_id, s.state))
 
-    // Create an RDD with tupples mapping store_id with credit_card_number (representing a transaction at that store)
+    // Create an RDD with tuples mapping store_id with credit_card_number (representing a transaction at that store)
+    val receiptsByCC = sc.cassandraTable("retail","receipts_by_credit_card")
     val creditCardByStoreID = receiptsByCC.map(r => (r.getInt("store_id"), r.getLong("credit_card_number")))
+
+    // Create an RDD with customer credit card and where they live
+    val customerCCNumAndState = sc.cassandraTable("retail", "customers").map(r => (r.getLong("credit_card_number"),r.getString("state")))
 
     // Based on the store ID as a key, join two RDD's together and filter out the StoreID as it's no longer required.
     // This will create tuples in the format (credit_card_number, state (where the cc was used)).
@@ -60,7 +61,12 @@ object FraudDetection {
     // This loads data into cassandra table showing number of fraudulent credit cards used by state
     creditCardAndState.join(fradulentCC).map({case (k,v) => (v._1, 1)}).reduceByKey(_ + _).map({case (k,v) => ("US-" + k, v, TimeUuid())})
       .saveToCassandra("retail","fraudulent_credit_card_use_by_state",SomeColumns("state","num_transactions","time_uuid"))
-    //creditCardByStoreStateCount.collect().foreach(println)
+
+    // Load data showing where all the fraudulent credit cards come from by state
+    customerCCNumAndState.join(fradulentCC).map({case (k,v) => (v._1,1)}).reduceByKey(_ + _).map({case (k,v) => ("US-" + k, v, TimeUuid())})
+      .saveToCassandra("retail","fraudulent_cc_by_owner_state",SomeColumns("state","num_credit_cards","time_uuid"))
+
+
+    //myvalue.collect().foreach(println)
   }
 }
-//creditCardByStoreStateCount.map({case (k,v) => ("US-" + v, k, TimeUuid())}).saveToCassandra("retail","credit_card_usage_by_state",SomeColumns("state","credit_card","time_uuid"))
