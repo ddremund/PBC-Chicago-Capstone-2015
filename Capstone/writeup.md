@@ -242,16 +242,16 @@ Notes: We list the number of fraudulent transactions per state (identified by st
 RetailRollup was used as a basis for this FraudDetection Spark Class.
 
 Using Scala the basic algorithm will be as follows:
-```
-1) Pull data from 'retail.receipts_by_credit_card' into an RDD.  We require the attributes 'store_id' and 'credit_card_number'.
-2) Pull data from 'retail.stores' into an RDD.  We require the attributes 'store_id' and 'state'.
-3) We join two RDD's based on 'store_id' to create another RDD
-4) Using RDD from (3) we remove any duplicate elements.  This represents entries where the credit card was used in the same state which is not a fraudulent action.  
-The output RDD from now represents a credit card use per state.  If the credit card exists more than once in this RDD, then it means that it has been used in more than one state and is therefore fraudulent.  
-5) Count the number of times a credit card occurs within this RDD
-6) Filter out credit card numbers that only occur once
-7) Output RDD is a list of all credit cards that are fraudulent
-```
+
+1.  Pull data from 'retail.receipts_by_credit_card' into an RDD.  We require the attributes 'store_id' and 'credit_card_number'.
+2.  Pull data from 'retail.stores' into an RDD.  We require the attributes 'store_id' and 'state'.
+3.  We join two RDD's based on 'store_id' to create another RDD
+4.  Using RDD from (3) we remove any duplicate elements.  This represents entries where the credit card was used in the same state which is not a fraudulent action.  
+The output RDD from now represents a credit card use per state.  If the credit card exists more than once in this RDD, then it means that it  has been used in more than one state and is therefore fraudulent.  
+5.  Count the number of times a credit card occurs within this RDD
+6.  Filter out credit card numbers that only occur once
+7.  Output RDD is a list of all credit cards that are fraudulent
+
 
 The above algorithm can be performed using the following scala code:
 
