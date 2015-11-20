@@ -53,8 +53,8 @@
         {% if receipts %}
             {% for receipt in receipts %}
                 <tr>
-                <td>{{ receipt.receipt_id }}</a></td>
-                <td>{{ receipt.quantity }}</a></td>
+                <td><a href="/web/receipt?receipt_id={{ receipt.receipt_id }}">{{ receipt.receipt_id }}</a></td>
+                <td>{{ receipt.quantity }}</td>
                 <td>{{ receipt.product_name }}</td>
                 <td><a href="/web/product?product_id={{ receipt.product_id }}">details</a></td>
                 </tr>
