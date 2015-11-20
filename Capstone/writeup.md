@@ -398,7 +398,7 @@ Query 1:
 
 Query 2:
 
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=400/ alt="most fraudulent credit card by count of state they were used in">  
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=200/ alt="most fraudulent credit card by count of state they were used in">  
 
 
 ##### Future Extensions:
