@@ -794,11 +794,11 @@ Finally, we expose our new functionality to the user by linking to it from the `
 </li>
 ```
 
-Our new UI allows searching of customers by name:  
-<img src="https://9c6a626b21c9461a6fe9-87f24ae4b76a6d93e356191fc0695acc.ssl.cf1.rackcdn.com/customers1.tiff" width=740 alt="Searching customers by name"/> 
-The results can be filtered by the state, city, or zipcode.
+Our new UI allows searching of customers by name:   
+<img src="https://9c6a626b21c9461a6fe9-87f24ae4b76a6d93e356191fc0695acc.ssl.cf1.rackcdn.com/customers1.tiff" width=740 alt="Searching customers by name"/>  
+The results can be filtered by the state, city, or zipcode.  
 
-Clicking the "Receipts List" link pulls all the receipts for that customer card:  
+Clicking the "Receipts List" link pulls all the receipts for that customer card:   
 <img src="https://9c6a626b21c9461a6fe9-87f24ae4b76a6d93e356191fc0695acc.ssl.cf1.rackcdn.com/customers2.tiff" width=1020 alt="CC Receipt List"/>  
 
 From there we can access the details of an individual receipt:  
