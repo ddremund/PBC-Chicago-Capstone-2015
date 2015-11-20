@@ -403,6 +403,7 @@ Query 2:
 
 ##### Future Extensions:
 
+###### Customer Table Extension
 An extension was added to the Spark Fraud Detection, combining the work from the addition of the customers table.  This extension allows us to determine which state has the most owners of fraudulent credit cards.  
 
 The extension was took the existing fraudulent credit card list and matched it against the owner based on the state they lived in.  Joins were performed on the credit card number itself, as this is unique to a customer:
@@ -450,3 +451,9 @@ The UI was extended using the following code in index.jinja2:
 The output graph is as follows:
 
 <img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph3.PNG" width=733/ alt="Number of fraudulent credit card owners by state">  
+
+
+###### Fraudulent Credit Card's by Date
+The model could be extended to account for the number of fraudulent credit cards by date.
+
+This could be achieved by group credit card receipts by date and matching against the fraudulent credit card list.
