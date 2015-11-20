@@ -1,4 +1,4 @@
-CREAT TABLE retail.customers (
+CREATE TABLE retail.customers (
     customer_name text,
     zipcode text,
     credit_card_number bigint,
