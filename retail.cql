@@ -24,11 +24,13 @@ CREATE TABLE retail.inventory_per_store (
 
 CREATE TABLE retail.customers (
     customer_name text,
+    state text,
+    city text,
     zipcode text,
     credit_card_number bigint,
     solr_query text,
-    PRIMARY KEY (customer_name, zipcode, credit_card_number)
-) WITH CLUSTERING ORDER BY (zipcode ASC, credit_card_number ASC)
+    PRIMARY KEY (customer_name, state, city, zipcode, credit_card_number)
+) WITH CLUSTERING ORDER BY (state ASC, city ASC, zipcode ASC, credit_card_number ASC)
     AND bloom_filter_fp_chance = 0.01
     AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
     AND comment = ''

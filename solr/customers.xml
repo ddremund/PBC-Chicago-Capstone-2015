@@ -30,11 +30,13 @@
  
 
     <field name="customer_name"  type="text" indexed="true"  stored="true"/>
+    <field name="state" type="string" indexed="true" stored="true"/>
+    <field name="city" type="string" indexed="true" stored="true"/>
     <field name="zipcode"  type="string" indexed="true"  stored="true"/>
     <field name="credit_card_number" type="bigint" indexed="true" stored="true"/>
  </fields>
 
 <defaultSearchField>customer_name</defaultSearchField>
-<uniqueKey>(customer_name,zipcode,credit_card_number)</uniqueKey>
+<uniqueKey>(customer_name,state,city,zipcode,credit_card_number)</uniqueKey>
 
 </schema>

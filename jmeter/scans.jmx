@@ -318,8 +318,8 @@
           <CassandraSampler guiclass="TestBeanGUI" testclass="CassandraSampler" testname="Insert Customer" enabled="true">
             <stringProp name="sessionName">cc</stringProp>
             <stringProp name="queryType">Prepared Statement</stringProp>
-            <stringProp name="query">insert into customers (customer_name, zipcode, credit_card_number) values (?,?,?)</stringProp>
-            <stringProp name="queryArguments">${customer_name},${zipcode},${credit_card_number}</stringProp>
+            <stringProp name="query">insert into customers (customer_name, city, state, zipcode, credit_card_number) values (?,?,?,?,?)</stringProp>
+            <stringProp name="queryArguments">${customer_name},${city},${state},${zipcode},${credit_card_number}</stringProp>
             <stringProp name="variableNames"></stringProp>
             <stringProp name="resultVariable"></stringProp>
             <stringProp name="consistencyLevel">ONE</stringProp>
