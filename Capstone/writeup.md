@@ -20,6 +20,7 @@ stores (store information)
 We can join data from both tables to see where they are used based on state.
 
 In order to answer the above queries, we introduced two new tables that help to satisfy these queries.
+
 Used to satisfy Query 1:
 ```
 CREATE TABLE retail.num_times_fraud_cc_used_in_diff_state (
