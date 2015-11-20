@@ -47,7 +47,7 @@ CREATE TABLE retail.fraudulent_credit_card_use_by_state (
 Notes: We list the number of fraudulent transactions per state (identified by state and num_transactions).  Timeuuid is used to give uniqueness.
 ```
 
-##### Detecting fraudulent credit card use with Spark.
+##### Detecting fraudulent credit card using with Spark.
 RetailRollup was used as a basis for this FraudDetection Spark Class.
 
 Using Scala the basic algorithm will be as follows:
