@@ -252,13 +252,12 @@ Similarly, the details of any product result are just a click away:
 
 #### Task 2: Fraud Detection using Spark
 ##### Goal
-The goal of this task is to determine fraudulent credit cards.  
+The goal of this task is to determine fraudulent credit cards.  Credit cards are determined to be fraudulent if they are used in more than one state as defined by the task.
 
-###### Credit cards are determined to be fraudulent if they are used in more than one state as defined by the task.
+The goal can be adapted by asking the question:
 
-We want to be able to visually show these things:
-1)	Top 20 most fraudulent credit card numbers based on the number of states they were used
-2)	Number of transactions that were fraudulent per states 
+###### Give me the top 20 most fraudulent credit card numbers based on the number of states they were used
+
 ##### New and Existing Cassandra Tables
 Looking at the existing schema, the most pertinent tables to use to satisfy the above queries are the following:
 ```
@@ -267,9 +266,8 @@ stores (store information)
 ```
 We can join data from both tables to see where they are used based on state.
 
-In order to answer the above queries, we introduced two new tables that help to satisfy these queries.
+In order to the above query, we introduced a new table to hold the output data
 
-Used to satisfy Query 1:
 ```CQL
 CREATE TABLE retail.num_times_fraud_cc_used_in_diff_state (
     dummy text,
@@ -279,26 +277,15 @@ CREATE TABLE retail.num_times_fraud_cc_used_in_diff_state (
     PRIMARY KEY (dummy, count, credit_card_number, time_uuid)
 ) WITH CLUSTERING ORDER BY (count DESC, credit_card_number DESC, time_uuid ASC)
 
-Notes: We use a dummy partition key and order based on count.  Count is the number of times that credit card was used in a different state.
+Table Notes: We use a dummy partition key and order based on count.  Count is the number of times that credit card was used in a different state.
 The timeuuid is used to give uniqueness to the primary key.  We recognise that use of a dummy partition key is not ideal, as this creates a
 very wide row.  In future, we could check the largest value using the MAX() function in newer versions of cassandra, or do it at the application level.
-```
-Used to satisfy Query 2:
-```CQL
-CREATE TABLE retail.fraudulent_credit_card_use_by_state (
-    state text,
-    num_transactions int,
-    time_uuid timeuuid,
-    PRIMARY KEY (state, num_transactions, time_uuid)
-) WITH CLUSTERING ORDER BY (num_transactions ASC, time_uuid ASC)
-
-Notes: We list the number of fraudulent transactions per state (identified by state and num_transactions).  Timeuuid is used to give uniqueness.
 ```
 
 ##### Detecting fraudulent credit card using with Spark.
 RetailRollup was used as a basis for this FraudDetection Spark Class.
 
-Using Scala the basic algorithm will be as follows:
+Using Scala, the algorithm is as follows:
 
 1.  Pull data from 'retail.receipts_by_credit_card' into an RDD.  We require the attributes 'store_id' and 'credit_card_number'.
 2.  Pull data from 'retail.stores' into an RDD.  We require the attributes 'store_id' and 'state'.
@@ -327,7 +314,7 @@ The above algorithm can be performed using the following scala code:
     val storeState = stores.map(s => (s.store_id, s.state))
 ```
 
-3) We join two RDD's based on 'store_id' as the key to create another RDD 
+3) Join two RDD's based on 'store_id' as the key to create another RDD 
 ```scala
     val creditCardAndState = creditCardByStoreID.join(storeState).map({case (k,v) => (v._1, v._2)})
 ```
@@ -359,19 +346,9 @@ For 'num_times_fraud_cc_used_in_diff_state':
     fradulentCC.map({case (k,v) => ("dummy", k,v,TimeUuid())}).saveToCassandra("retail","num_times_fraud_cc_used_in_diff_state",SomeColumns("dummy","credit_card_number","count","time_uuid"))
 ```
 
-For 'fraudulent_credit_card_use_by_state':
-```scala
-    creditCardAndState.join(fradulentCC).map({case (k,v) => (v._1, 1)}).reduceByKey(_ + _).map({case (k,v) => ("US-" + k, v, TimeUuid())})
-      .saveToCassandra("retail","fraudulent_credit_card_use_by_state",SomeColumns("state","num_transactions","time_uuid"))
-
-Notes: We join the fraudulent credit cards we know, back to the original transactions table.  We then count the number occurrences and the populate the table.
-```
-
 ##### Displaying the information on the application.
 
 Added the following entries to index.jinja2:
-
-Query 1:
 ```jinja
   <li>
     <a href="/gcharts/GeoChart/?url=/api/simplequery&options={height:600,region:'US',resolution:'provinces'}&q=select state,num_transactions from fraudulent_credit_card_use_by_state">
@@ -379,32 +356,14 @@ Query 1:
     </a>
   </li>
 ```
+With the following corresponding table:
 
-Query 2:
-```jinja
-  <li>
-    <a href="/gcharts/Table/?url=/api/simplequery&q=select credit_card_number,count from num_times_fraud_cc_used_in_diff_state limit 20&order_column=count&order_direction=-1">
-      Google Charts: Top 20 most fraudulent credit cards based on number of states used in
-    </a>
-  </li>
-```
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph1.PNG" width=733/ alt="number of fraudulent credit cards used per state">  
 
-Corresponding images for these queries can be seen here:
+##### Extensions:
 
-Query 1:
-
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph1.PNG" width=733 alt="number of fraudulent credit cards used per state"/>  
-
-
-Query 2:
-
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=200 alt="most fraudulent credit card by count of state they were used in"/>  
-
-
-##### Future Extensions:
-
-###### Customer Table Extension
-An extension was added to the Spark Fraud Detection, combining the work from the addition of the customers table (see Task 3 below).  This extension allows us to determine which state has the most owners of fraudulent credit cards.  
+###### Integration into Customer Table 
+An extension was added to the Spark Fraud Detection, combining the work from the addition of the customers table.  This extension allows us to determine which state has the most owners of fraudulent credit cards.  
 
 The extension was took the existing fraudulent credit card list and matched it against the owner based on the state they lived in.  Joins were performed on the credit card number itself, as this is unique to a customer:
 
@@ -437,7 +396,6 @@ CREATE TABLE retail.fraudulent_cc_by_owner_state (
     AND speculative_retry = '99.0PERCENTILE';
 ```
 
-
 The UI was extended using the following code in index.jinja2:
 
 ```jinja
@@ -453,10 +411,107 @@ The output graph is as follows:
 <img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph3.PNG" width=733/ alt="Number of fraudulent credit card owners by state">  
 
 
-###### Fraudulent Credit Card's by Date
+###### Amount spent by Fraud Credit Cards   
+
+Businesses want to know how much was spent on fraud so they can account for these in their reporting (and ultimately their bottom line).
+
+We implement a table here to show how much each fraud credit card has spent.
+
+Our new CQL table for this query is as follows.  It is a simple table outlining the credit card number and the amount spent per credit card.
+
+```cql
+CREATE TABLE retail.amount_spent_by_fraud_cc (
+    credit_card_number bigint,
+    amount_spent decimal,
+    PRIMARY KEY (credit_card_number, amount_spent)
+) WITH CLUSTERING ORDER BY (amount_spent ASC)
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+```
+
+We utilise the following scala code to perform the calculation:
+``` scala
+    val creditCardByAmountSpent = receiptsByCC.map(r => (r.getLong("credit_card_number"), r.getDecimal("receipt_total")))
+   creditCardByAmountSpent.join(fradulentCC).map({case (k,v) => (k,v._1)}).reduceByKey(_ + _).map({case (k,v) => (k, v)})
+      .saveToCassandra("retail","amount_spent_by_fraud_cc",SomeColumns("credit_card_number","amount_spent"))
+```
+
+This code effectively maps the fraud credit credit number to the transaction amount and then performs a reduceByKey() to count up the total amount spent per creditcard.
+
+Our Python application is updated in index.jinja2:
+```jinja
+</li>
+    <li>
+     <a href="/gcharts/Table/?url=/api/simplequery&q=select credit_card_number,amount_spent from amount_spent_by_fraud_cc&order_column=amount_spent&order_direction=-1">
+     Google Charts: Total amount spent per fraudulent credit card
+    </a>
+</li>
+```
+
+And our output table looks like the following:
+
+
+
+###### Determining number of fraud credit card transactions per state
+
+In this extension we want to answer the question "How many fraudulent credit card transactions by state?".
+
+We introduce a new table to cater for this query:
+
+```CQL
+CREATE TABLE retail.fraudulent_credit_card_use_by_state (
+    state text,
+    num_transactions int,
+    time_uuid timeuuid,
+    PRIMARY KEY (state, num_transactions, time_uuid)
+) WITH CLUSTERING ORDER BY (num_transactions ASC, time_uuid ASC)
+
+Notes: We list the number of fraudulent transactions per state (identified by state and num_transactions).  Timeuuid is used to give uniqueness.
+```
+
+Using the core code, we can populate the table by using the following code.  This code simply rejoins the fraudulent credit card list that we know against the original RDD of transactions.  It then counts the number of times these transactions occurred by state, using the reduceByKey() method.
+
+For 'fraudulent_credit_card_use_by_state':
+```scala
+    creditCardAndState.join(fradulentCC).map({case (k,v) => (v._1, 1)}).reduceByKey(_ + _).map({case (k,v) => ("US-" + k, v, TimeUuid())})
+      .saveToCassandra("retail","fraudulent_credit_card_use_by_state",SomeColumns("state","num_transactions","time_uuid"))
+
+Notes: We join the fraudulent credit cards we know, back to the original transactions table.  We then count the number occurrences and the populate the table.
+```
+
+The Python application code is updated:
+
+```jinja
+  <li>
+    <a href="/gcharts/Table/?url=/api/simplequery&q=select credit_card_number,count from num_times_fraud_cc_used_in_diff_state limit 20&order_column=count&order_direction=-1">
+      Google Charts: Top 20 most fraudulent credit cards based on number of states used in
+    </a>
+  </li>
+```
+
+And the presentation of the table can be shown here:
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=200/ alt="most fraudulent credit card by count of state they were used in">  
+
+
+ 
+
+##### Unimplemented Extensions:
 The model could be extended to account for the number of fraudulent credit cards by date.
 
 This could be achieved by group credit card receipts by date and matching against the fraudulent credit card list.
+
+
 
 #### Task 3: Implement `customers` Table
 ##### Goal
