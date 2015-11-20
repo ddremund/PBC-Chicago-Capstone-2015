@@ -393,11 +393,60 @@ Corresponding images for these queries can be seen here:
 
 Query 1:
 
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph1.PNG" width=733/ alt="Searching receipts by product">  
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph1.PNG" width=733/ alt="number of fraudulent credit cards used per state">  
 
 
 Query 2:
 
-<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=400/ alt="Searching receipts by product">  
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph2.PNG" width=400/ alt="most fraudulent credit card by count of state they were used in">  
+
+
 ##### Future Extensions:
 
+An extension was added to the Spark Fraud Detection, combining the work from the addition of the customers table.  This extension allows us to determine which state has the most owners of fraudulent credit cards.  
+
+The extension was took the existing fraudulent credit card list and matched it against the owner based on the state they lived in.  Joins were performed on the credit card number itself, as this is unique to a customer:
+
+```scala
+    customerCCNumAndState.join(fradulentCC).map({case (k,v) => (v._1,1)}).reduceByKey(_ + _).map({case (k,v) => ("US-" + k, v, TimeUuid())})
+      .saveToCassandra("retail","fraudulent_cc_by_owner_state",SomeColumns("state","num_credit_cards","time_uuid"))
+```
+
+Data was inserted into a table created for the query:
+
+```cql
+CREATE TABLE retail.fraudulent_cc_by_owner_state (
+    state text,
+    num_credit_cards int,
+    time_uuid timeuuid,
+    PRIMARY KEY (state, num_credit_cards, time_uuid)
+) WITH CLUSTERING ORDER BY (num_credit_cards ASC, time_uuid ASC)
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+```
+
+
+The UI was extended using the following code in index.jinja2:
+
+```jinja
+<li>
+    <a href="/gcharts/GeoChart/?url=/api/simplequery&options={height:600,region:%27US%27,resolution:%27provinces%27}&q=select%20state,num_credit_cards%20from%20fraudulent_cc_by_owner_state">
+     Google Charts: Number of fraudulent credit card owners in each State
+    </a>
+</li>
+```
+
+The output graph is as follows:
+
+<img src="http://ceb0fc79be137b6f61e0-035db44ce48f9c179089b6a765245cb7.r19.cf6.rackcdn.com/graph3.PNG" width=733/ alt="Number of fraudulent credit card owners by state">  
