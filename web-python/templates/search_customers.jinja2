@@ -77,13 +77,13 @@
                     {% set zip_new_filter_by = filter_by + " AND " + zip_new_filter_by %}
                   {% endif %}
                 {% set city_new_filter_by = 'city:"' + customer.city + '"'%}
-                                  {% if filter_by %}
-                                    {% set city_new_filter_by = filter_by + " AND " + city_new_filter_by %}
-                                  {% endif %}
+                  {% if filter_by %}
+                    {% set city_new_filter_by = filter_by + " AND " + city_new_filter_by %}
+                  {% endif %}
                 {% set state_new_filter_by = 'state:"' + customer.state + '"'%}
-                                  {% if filter_by %}
-                                    {% set state_new_filter_by = filter_by + " AND " + state_new_filter_by %}
-                                  {% endif %}
+                  {% if filter_by %}
+                    {% set state_new_filter_by = filter_by + " AND " + state_new_filter_by %}
+                  {% endif %}
 
                 <tr>
                 <td>&nbsp;{{ customer.customer_name }}</td>
