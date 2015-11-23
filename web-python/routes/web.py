@@ -152,7 +152,7 @@ def search_receipts():
     results = cassandra_helper.session.execute(query)
 
     facet_query = 'SELECT * FROM receipts WHERE solr_query = ' \
-                  '\'{%s,"facet":{"field":["supplier_name","quantity"]}}\' ' % solr_query
+                  '\'{%s,"facet":{"field":["quantity"]}}\' ' % solr_query
 
     facet_results = cassandra_helper.session.execute(facet_query)
     facet_string = facet_results[0].get("facet_fields")
@@ -163,7 +163,6 @@ def search_receipts():
     return render_template('search_receipts.jinja2',
                            search_term = search_term,
                            quantities = filter_facets(facet_map['quantity']),
-                           suppliers = filter_facets(facet_map['supplier_name']),
                            receipts = results,
                            filter_by = filter_by)
 
