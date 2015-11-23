@@ -216,7 +216,7 @@ def search_receipts():
     results = cassandra_helper.session.execute(query)
 
     facet_query = 'SELECT * FROM receipts WHERE solr_query = ' \
-                  '\'{%s,"facet":{"field":["supplier_name","quantity"]}}\' ' % solr_query
+                  '\'{%s,"facet":{"field":["quantity"]}}\' ' % solr_query
 
     facet_results = cassandra_helper.session.execute(facet_query)
     facet_string = facet_results[0].get("facet_fields")
@@ -227,7 +227,6 @@ def search_receipts():
     return render_template('search_receipts.jinja2',
                            search_term = search_term,
                            quantities = filter_facets(facet_map['quantity']),
-                           suppliers = filter_facets(facet_map['supplier_name']),
                            receipts = results,
                            filter_by = filter_by)
 ```
@@ -276,13 +275,13 @@ CREATE TABLE retail.num_times_fraud_cc_used_in_diff_state (
     time_uuid timeuuid,
     PRIMARY KEY (dummy, count, credit_card_number, time_uuid)
 ) WITH CLUSTERING ORDER BY (count DESC, credit_card_number DESC, time_uuid ASC)
-
+```
 Table Notes: We use a dummy partition key and order based on count.  Count is the number of times that credit card was used in a different state.
 The timeuuid is used to give uniqueness to the primary key.  We recognise that use of a dummy partition key is not ideal, as this creates a
 very wide row.  In future, we could check the largest value using the MAX() function in newer versions of cassandra, or do it at the application level.
-```
 
-##### Detecting fraudulent credit card using with Spark.
+
+##### Detecting fraudulent credit cards using with Spark
 RetailRollup was used as a basis for this FraudDetection Spark Class.
 
 Using Scala, the algorithm is as follows:
